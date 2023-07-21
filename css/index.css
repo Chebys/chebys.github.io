@@ -1,0 +1,26 @@
+body{
+	margin:0;
+}
+#top{
+	height:60px;
+	width:100%;
+	box-shadow:0 0 5px grey;
+	user-select:none;
+}
+#n{
+	height:50px;
+	width:50px;
+	position:absolute;
+	top:5px;
+	left:10px;
+    cursor: pointer;
+	border-radius:50%;
+	transition:0.2s;
+}
+#n:hover{background:#eee;}
+#n:active{background:#ddd;}
+#ni{
+	position:absolute;
+	top:10px;
+	left:10px;
+}
