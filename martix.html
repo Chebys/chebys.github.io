@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>矩阵工具</title>
+<link rel="icon" href="src/martix.png">
+<link rel="stylesheet" href="css/martix.css">
+<script src="js/fn.js"></script>
+<script src="js/martix.js"></script>
+<script>
+function f(){
+	var a=ipt(1),b=ipt(2);
+	opt(ld(a,b));
+}
+</script>
+</head>
+<body>
+<div id="midrol">
+	<div id='input' class='block'>
+		<textarea id='ipt1' placeholder="Input A"></textarea>
+		<textarea id='ipt2' placeholder="Input B"></textarea>
+	</div>
+	<div id="panel" class='block'>
+		<button onclick="str()">阶梯形阵</button>
+		<button onclick="spstr()">简化阶梯形阵</button>
+		<button onclick="sqr()">A<sup>2</sup></button>
+		<button onclick="inverse()">A<sup>-1</sup></button>
+		<button onclick="ab()">AB</button>
+		<button onclick="a_b()">A<sup>-1</sup>B</button>
+		<button onclick="ab_()">AB<sup>-1</sup></button>
+		<button onclick="f()">f</button>
+		<div id='inf'>
+			<span>说明</span>
+			<ul>
+				<li>支持输入整数、小数</li>
+				<li>输入数字用空格分隔，回车换行</li>
+				<li>不检查输入</li>
+				<li>结果显示为整数或分数</li>
+				<li>不支持高精度</li>
+			</ul>
+		</div>
+	</div>
+	<div id='output' class='block'>
+		<div id="ohead">结果：</div>
+		<div id="opt"></div>
+	</div>
+</div>
+</body>
+</html>
