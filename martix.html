@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>矩阵化简</title>
+<style>
+#panel{
+	position:absolute;
+	height:300px;
+	width:150px;
+	border:0;
+	border-radius:5px;
+	background-color:rgba(241,241,241,.98);
+	padding: 10px;
+}
+ul{padding-left:20px;}
+textarea{
+	position:absolute;
+	left:200px;
+	height:300px;
+	width:300px;
+	border:1px solid;
+	border-radius:5px;
+	background-color:#eee;
+	padding: 10px;
+	z-index:1;
+}
+#opt{
+	position:absolute;
+	top:340px;
+	left:0;
+	height:400px;
+	width:calc(100% - 40px);
+	border:1px solid black;
+	margin:9px;
+	padding:10px;
+}
+#opt span{
+	width:50px;
+	height:30px;
+	display:inline-block;
+	text-align:center;
+}
+.acu{}
+.rgh{color:#a80}
+</style>
+<script>
+function str(){//阶梯形阵
+	var a=ipt();
+	opt(spl(a));
+}
+function spstr(){//简化阶梯形阵
+	var a=spl(ipt()),l=[];
+	for(var i=0;i<a.length;i++)for(var j=0;j<a[i].length;j++)if(a[i][j]){
+		l[i]=j;//第i行首元列
+		for(var k=a[i].length-1;k>=j;k--)a[i][k]/=a[i][j];
+		break;
+	}
+	for(var i=a.length-1;i>=0;i--){//被减行
+		for(var j=a.length-1;j>i;j--){//减行
+			for(var k=a[j].length-1;k>=l[j];k--)a[i][k]-=a[i][l[j]]*a[j][k];
+		}
+	}
+	opt(a);
+}
+function ipt(){//读取输入
+	var a=document.getElementById('ipt').value.split('\n');
+	for(var i=0;i<a.length;i++){
+		a[i]=a[i].split(' ');
+		for(var j=0;j<a[i].length;j++)a[i][j]=parseFloat(a[i][j]);
+	}
+	return a;
+}
+function opt(b){//输出
+	var o='';
+	for(var i=0;i<b.length;i++){
+		for(var j=0;j<b[i].length;j++)o+=elm(b[i][j])+' ';
+		o+='<br/>';
+	}
+	document.getElementById('opt').innerHTML=o;
+}
+function spl(a){//变换
+	if(a.length==1)return a;//只剩一行无需变换
+	var r,cl=[],i0=0,j0=a[0].length;
+	for(var j=0;j<j0;j++)for(var i=0;i<a.length;i++)if(a[i][j]){i0=i;j0=j;break;}
+	if(j0==a[0].length)return a;//零矩阵无需变换
+	r=a[i0];
+	for(var i=0;i<i0;i++)cl[i]=a[i];
+	for(var i=i0+1;i<a.length;i++)cl[i-1]=a[i];
+	for(var i=0;i<cl.length;i++)if(cl[i][j0]){
+		var k=cl[i][j0]/r[j0];
+		for(var j=j0;j<r.length;j++)cl[i][j]-=k*r[j];
+	}
+	cl=spl(cl);//console.log(cl);
+	return cob(r,cl);
+}
+function cob(r,c){//合并
+	var a=[];
+	a[0]=r;
+	return a.concat(c);
+}
+function elm(b){//转化为html元素
+	var bit=3,bs=b.toString();
+	var point =bs.indexOf('.');
+	if (bs.length>point+bit+1){//b的长度大于保留位数长度
+		return "<span class='rgh'>"+b.toFixed(bit)+"</span>";
+	} 
+	return "<span class='acu'>"+b+"</span>";
+}
+</script>
+</head>
+<body>
+<div id="panel">
+<button onclick="str()">阶梯形阵</button>
+<button onclick="spstr()">简化阶梯形阵</button>
+<ul>
+  <li>数字用空格分隔，回车换行</li>
+  <li>近似值以<span class='rgh'>这种颜色</span>显示</li>
+  <li>不支持高精度</li>
+</ul>
+</div>
+<textarea id='ipt' placeholder="Input here..."></textarea>
+<div id="opt"></div>
+</body>
+</html>
