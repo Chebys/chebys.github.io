@@ -57,49 +57,47 @@ function extract(){
 		alert('未获取官方文本');
 		return;
 	}
-	var c=Char(),raw=getRaw(c),fm=document.getElementsByName('format')[0].value;
-	if(!raw){alert('提取出错');return;}
+	var c=Char(),data=getData(c),fm=document.getElementsByName('format')[0].value;
+	if(!data){alert('提取出错');return;}
 	if(fm=='tabx'){
 		opt.style.display='block';
-		opt.value=toTabx(raw);
+		opt.value=toTabx(data);
 	}
-	else toXlsx(raw);
+	else toXlsx(data);
 }
-function getRaw(c){//c为小写角色名，默认威尔逊
-	var p=/#\. STRINGS\.CHARACTERS\.GENERIC\.([\S\s]*)#\. STRINGS\.CHARACTERS\.GENERIC\.([\S\s]*?)\n([\S\s]*?)\n([\S\s]*?)\n([\S\s]*?)\n/.source;
+function getData(c){//c为小写角色名，默认威尔逊
+	var p=/#\. STRINGS\.CHARACTERS\.GENERIC\.([\S\s]*?)\nmsgctxt "([\S\s]*?)"\nmsgid "([\S\s]*?)"\nmsgstr "([\S\s]*?)"\n/.source;
 	if(c&&c!='wilson')p=p.replace(/GENERIC/g,c);
 	else c='wilson';
-	var res=new RegExp(p,'i').exec(PO);
-	if(!res)return;
-	res=res[0].replace(/#\. STRINGS\.CHARACTERS\.([\S\s]*?)\.([\S\s]*?)\nmsgctxt "([\S\s]*?)"\nmsgid "([\S\s]*?)"\nmsgstr "([\S\s]*?)"\n/g,c+'@$2@$3@$4@$5');
-	res=res.replace(/\\n/g,'').replace(/\\\"/g,'"');
-	//console.log(res)
-	return res;
+	p=new RegExp(p,'ig');
+	var res=p.exec(PO),data=[];
+	const norm=t=>t.trim().replace(/\\n/g,'').replace(/\\\"/g,'"');
+	while(res){
+		data.push([c,res[1],res[2],norm(res[3]),norm(res[4])]);
+		res=p.exec(PO);
+	}
+	return data;
 }
-function toXlsx(t){
-	var fields=[['name','type','title_zh','title_en']];
-	head.split('@').forEach(s=>{
+function toXlsx(data){
+	var wb=XLSX.utils.book_new(),fields=[['name','type','title_zh','title_en']];
+	data.unshift(head)
+	data=XLSX.utils.aoa_to_sheet(data);
+	XLSX.utils.book_append_sheet(wb,data,'data');
+	head.forEach(s=>{
 		fields.push([s,'string','',s]);
 	});
 	fields=XLSX.utils.aoa_to_sheet(fields);
-	t=head+'\n'+t;
-	var wb=XLSX.read(t,{type:'string',FS:'@'});
-	wb.SheetNames=['data','fields'];
-	wb.Sheets.data=wb.Sheets.Sheet1;
-	wb.Sheets.fields=fields;
+	XLSX.utils.book_append_sheet(wb,fields,'fields');
 	XLSX.writeFile(wb,Char()+'.xlsx');
-	//return t;
 }
-function toTabx(t){
+function toTabx(data){
 	var obj={schema:{}},fields=[];
-	head.split('@').forEach(s=>{
+	head.forEach(s=>{
 		fields.push({name:s,type:"string",title:{en:s,zh:''}});
 	});
 	obj.schema.fields=fields;
-	t=t.split('\n');
-	for(var i=0;t[i];i++)t[i]=t[i].split('@');
-	obj.data=t;
-	console.log(obj);
+	obj.data=data;
+	//console.log(obj);
 	return JSON.stringify(obj);
 }
 onload=()=>{
