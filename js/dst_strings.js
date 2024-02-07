@@ -79,12 +79,12 @@ function getData(c){//c为小写角色名，默认威尔逊
 	return data;
 }
 function toXlsx(data){
-	var wb=XLSX.utils.book_new(),fields=[['name','type','title_en']];
+	var wb=XLSX.utils.book_new(),fields=[['name','type','title_zh','title_en']];
 	data.unshift(head)
 	data=XLSX.utils.aoa_to_sheet(data);
 	XLSX.utils.book_append_sheet(wb,data,'data');
 	head.forEach(s=>{
-		fields.push([s,'string',s]);
+		fields.push([s,'string','',s]);
 	});
 	fields=XLSX.utils.aoa_to_sheet(fields);
 	XLSX.utils.book_append_sheet(wb,fields,'fields');
