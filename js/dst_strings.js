@@ -1,4 +1,4 @@
-var PO,size,date,head='speech_character@speech_code@strings_code@strings_en@strings_cn',xhr=new XMLHttpRequest();
+var PO,size,date,head='speech_character@speech_code@strings_code@strings_en@strings_cn'.split('@'),xhr=new XMLHttpRequest();
 function req(url,load){
 	var xh=new XMLHttpRequest();
 	xh.open('GET',url);
