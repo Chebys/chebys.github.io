@@ -79,12 +79,12 @@ function getData(c){//c为小写角色名，默认威尔逊
 	return data;
 }
 function toXlsx(data){
-	var wb=XLSX.utils.book_new(),fields=[['name','type','title_zh','title_en']];
+	var wb=XLSX.utils.book_new(),fields=[['name','type','title_en']];
 	data.unshift(head)
 	data=XLSX.utils.aoa_to_sheet(data);
 	XLSX.utils.book_append_sheet(wb,data,'data');
 	head.forEach(s=>{
-		fields.push([s,'string','',s]);
+		fields.push([s,'string',s]);
 	});
 	fields=XLSX.utils.aoa_to_sheet(fields);
 	XLSX.utils.book_append_sheet(wb,fields,'fields');
@@ -93,11 +93,10 @@ function toXlsx(data){
 function toTabx(data){
 	var obj={schema:{}},fields=[];
 	head.forEach(s=>{
-		fields.push({name:s,type:"string",title:{en:s,zh:''}});
+		fields.push({name:s,type:"string",title:{en:s}});
 	});
 	obj.schema.fields=fields;
 	obj.data=data;
-	//console.log(obj);
 	return JSON.stringify(obj);
 }
 onload=()=>{
