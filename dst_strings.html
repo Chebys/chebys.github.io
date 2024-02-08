@@ -6,9 +6,13 @@
 	<title>饥荒角色台词提取</title>
 	<style>
 	body{position:absolute;width:100%;height:100%;margin:0;}
+	div{padding:5px;}
 	button,label{margin:10px;border:none;background:#cb4;font-size:15px;padding:5px 10px;border-radius:5px;color:white;}
 	button:hover,label:hover{background:#dc6;}
 	#container{box-sizing:border-box;width:100%;height:100%;padding:15px 30px;}
+	#info{width:max-content;position:relative;color:#4ce;text-decoration:underline;}
+	#tooltip{width:max-content;position:absolute;top:100%;z-index:1;padding:20px;background:white;border-radius:10px;box-shadow:0 1px 5px rgb(0,0,0,0.2);color:black;visibility:hidden;}
+	#info:hover #tooltip{visibility:visible;}
 	#opt{display:none;width:100%;height:400px;box-sizing:border-box;}
 	#infile{display:none;}
 	</style>
@@ -18,7 +22,14 @@
 </head>
 <body>
 <div id="container">
-<div>只能提取联机版角色台词。</div>
+<div id="info">说明
+	<div id="tooltip">
+		<li>参见<a href="https://dontstarve.huijiwiki.com/wiki/%E5%B8%AE%E5%8A%A9:%E7%BB%B4%E5%9F%BA%E8%A7%92%E8%89%B2%E5%8F%B0%E8%AF%8D%E6%9B%B4%E6%96%B0" target="_blank">这篇文章</a></li>
+		<li>只能提取联机版角色台词</li>
+		<li>xlsx格式适用于tabx编辑器的表格导入功能</li>
+		<li>tabx格式适用于源代码编辑</li>
+	</div>
+</div>
 <div id="stp1">1、获取官方文本chinese_s.po</div>
 <div>当前状态：<span id="s1">未获取</span><span id="s1bt"></span></div>
 <input id="infile" type="file"><label for="infile">手动上传</label><button id="remo">从服务器获取</button>
