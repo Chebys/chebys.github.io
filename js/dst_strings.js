@@ -91,11 +91,8 @@ function toXlsx(data){
 	XLSX.writeFile(wb,Char()+'.xlsx');
 }
 function toTabx(data){
-	var obj={schema:{}},fields=[];
-	head.forEach(s=>{
-		fields.push({name:s,type:"string",title:{en:s}});
-	});
-	obj.schema.fields=fields;
+	var obj={schema:{}};
+	obj.schema.fields=head.map(s=>({name:s,type:'string',title:{en:s}}));
 	obj.data=data;
 	return JSON.stringify(obj);
 }
