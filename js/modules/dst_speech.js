@@ -41,5 +41,6 @@ dstSpeech.toXlsx=(data,XLSX)=>{
 	XLSX.utils.book_append_sheet(wb,fields,'fields');
 	return wb;
 }
+dstSpeech.getTabx=c=>dstSpeech.toTabx(dstSpeech.getData(c));
 
 export default dstSpeech;
