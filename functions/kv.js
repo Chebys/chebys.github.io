@@ -1,6 +1,7 @@
 export function onRequest(context){
 	const url=new URL(context.request.url);
-	const params=url.searchParams
+	const k=url.searchParams.get('k')
+	const res=context.env.KV.get('PRIME')
 	//return context.env.ASSETS.fetch('/The Corruption/')
-	return new Response(params.get('k'))
+	return new Response(res)
 }
