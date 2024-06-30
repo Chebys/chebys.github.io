@@ -2,7 +2,7 @@ export async function onRequest(context){
 	const url=new URL(context.request.url);
 	const get=p=>url.searchParams.get(p)
 	const target=get('url')
-	
+	var res;
 	if(!target){
 		res='缺少url';
 	}else{
