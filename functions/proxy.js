@@ -8,7 +8,10 @@ export async function onRequest(context){
 	}else{
 		try{
 			res=await fetch(target);
-			res.headers=new Headers(res.headers); //immutable headers
+			let headers=res.headers;
+			res=new Response(await res.blob());
+			for(let [k,v] of headers)res.headers.set(k, v);
+			//res.headers=new Headers(headers);
 		}catch(err){
 			res=new Response('失败');
 		}
