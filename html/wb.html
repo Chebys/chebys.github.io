@@ -2,30 +2,40 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Whiteboard</title>
 <style>
 body{margin:0;}
-#container{height:100vh;}
-#wb{height:90%;width:90%;}
+#container{height:100vh;width:90%;margin:auto;}
+#wb{display:block;box-sizing:border-box;height:90%;width:100%;}
+button{float:right;}
 </style>
 <script>addEventListener('load',  _=>{
 
 const url='https://chebys.pages.dev/kv?key=whiteboard';
 async function getContent(){
+	statu.innerHTML='加载中';
 	var res=await fetch(url);
 	wb.value=await res.text();
+	statu.innerHTML='完成';
 }
 async function postContent(){
+	statu.innerHTML='提交中';
 	var res=await fetch(url+'&mode=set', {method:'POST', body:wb.value});
 	//wb.value=await res.text();
 	console.log(await res.text());
+	statu.innerHTML='完成';
 }
 getContent();
-bt.addEventListener('click', postContent);
+download.addEventListener('click', getContent);
+submit.addEventListener('click', postContent);
 
 })</script>
 </head>
 <body>
-<div id="container"><textarea id="wb"></textarea><button id="bt">提交</button></div>
+<div id="container">
+<textarea id="wb"></textarea>
+<div>当前状态：<span id="statu"></span><button id="download">加载</button><button id="submit">提交</button><div>
+</div>
 </body>
 </html>
