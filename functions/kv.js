@@ -12,6 +12,6 @@ export async function onRequest(context){
 	}
 	//return context.env.ASSETS.fetch('/The Corruption/')
 	var response=new Response(res)
-	response.headers.set('Access-Control-Allow-Origin', url.origin);
+	response.headers.set('Access-Control-Allow-Origin', '*');
 	return response
 }
