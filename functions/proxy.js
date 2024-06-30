@@ -18,8 +18,8 @@ export async function onRequest(context){
 			let headers=res.headers;
 			if(mode=='complete-page'&&headers.get('Content-Type').match('text/html')){
 				let t=await res.text();
-				t=t.replace(/src="\/[^\/]/, `src="${tURL.origin}/`);
-				t=t.replace(/href="\/[^\/]/, `href="${tURL.origin}/`);
+				t=t.replace(/src="\/(?=[^\/])/, `src="${tURL.origin}/`);
+				t=t.replace(/href="\/(?=[^\/])/, `href="${tURL.origin}/`);
 				res=new Response(t)
 			}else{
 				res=new Response(await res.blob());
