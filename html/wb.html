@@ -5,18 +5,27 @@
 <title>Whiteboard</title>
 <style>
 body{margin:0;}
+#container{height:100vh;}
 #wb{height:90%;width:90%;}
 </style>
-<script>addEventListener('load', async _=>{
+<script>addEventListener('load',  _=>{
 
 const url='https://chebys.pages.dev/kv?key=whiteboard';
-var res=await fetch(url);
-wb.value=await res.text();
-//var res=await fetch(url+'&mode=set', {method:'POST',body:'001'})
+async function getContent(){
+	var res=await fetch(url);
+	wb.value=await res.text();
+}
+async function postContent(){
+	var res=await fetch(url+'&mode=set', {method:'POST', body:wb.value});
+	//wb.value=await res.text();
+	console.log(await res.text());
+}
+getContent();
+bt.addEventListener('click', postContent);
 
 })</script>
 </head>
 <body>
-<textarea id="wb"></textarea>
+<div id="container"><textarea id="wb"></textarea><button id="bt">提交</button></div>
 </body>
 </html>
