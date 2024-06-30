@@ -4,7 +4,7 @@ export async function onRequest(context){
 	const get=p=>url.searchParams.get(p);
 	const mode=get('mode');
 	var tURL, res=null;
-	var target=context.request.url.match(/\?url=(.+)/)?.[1];
+	var target=context.request.url.match(/url=(.+)/)?.[1];
 	function error_res(msg){
 		res=new Response(msg_h+msg);
 	}
