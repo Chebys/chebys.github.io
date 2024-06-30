@@ -6,9 +6,9 @@ export async function onRequest(context){
 		res='缺少key';
 	}else if(mode=='set'){
 		value=await context.request.text()||'asdasd';
-		res=await context.env.KV.put(key, value)?'成功':'失败';
+		res=await context.env.KV.put(key, value)//?'成功':'失败';
 	}else{
-		res=await context.env.KV.get('PRIME')
+		res=await context.env.KV.get(key)
 	}
 	//return context.env.ASSETS.fetch('/The Corruption/')
 	var response=new Response(res)

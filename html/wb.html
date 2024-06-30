@@ -4,10 +4,19 @@
 <meta charset="UTF-8">
 <title>Whiteboard</title>
 <style>
-
+body{margin:0;}
+#wb{height:90%;width:90%;}
 </style>
+<script>addEventListener('load', async _=>{
+
+const url='https://chebys.pages.dev/kv?key=whiteboard';
+var res=await fetch(url);
+wb.value=await res.text();
+//var res=await fetch(url+'&mode=set', {method:'POST',body:'001'})
+
+})</script>
 </head>
 <body>
-<textarea></textarea>
+<textarea id="wb"></textarea>
 </body>
 </html>
