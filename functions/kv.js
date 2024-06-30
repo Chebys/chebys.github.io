@@ -1,12 +1,15 @@
 export async function onRequest(context){
 	const url=new URL(context.request.url);
 	const get=p=>url.searchParams.get(p)
-	var key=get('key'), mode=get('mode'), value, res
+	const key=get('key'), mode=get('mode')
+	var res
 	if(!key){
 		res='缺少key';
 	}else if(mode=='set'){
-		value=await context.request.text()||'asdasd';
-		res=await context.env.KV.put(key, value)//?'成功':'失败';
+		let value=await context.request.text();
+		res='succeeded';
+		await context.env.KV.put(key, value)
+			.catch(err=>{res='failed'})
 	}else{
 		res=await context.env.KV.get(key)
 	}
