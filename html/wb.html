@@ -15,7 +15,7 @@ button{float:right;}
 const url='https://chebys.pages.dev/kv?key=whiteboard';
 async function getContent(){
 	statu.innerHTML='加载中';
-	var res=await fetch(url);
+	var res=await fetch(url, {cache:'no-store'});
 	wb.value=await res.text();
 	statu.innerHTML='完成';
 }

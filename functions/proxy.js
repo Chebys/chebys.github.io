@@ -4,7 +4,7 @@ export async function onRequest(context){
 	const target=get('url')
 	var res;
 	if(!target){
-		res=new Response('缺少url');
+		res=new Response('url missing');
 	}else{
 		try{
 			res=await fetch(target);
@@ -13,7 +13,8 @@ export async function onRequest(context){
 			for(let [k,v] of headers)res.headers.set(k, v);
 			//res.headers=new Headers(headers);
 		}catch(err){
-			res=new Response('失败');
+			console.log(err);
+			res=new Response('error');
 		}
 	}
 	res.headers.set('Access-Control-Allow-Origin', '*');
