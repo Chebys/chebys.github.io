@@ -4,17 +4,15 @@ export async function onRequest(context){
 	const target=get('url')
 	var res;
 	if(!target){
-		res='缺少url';
+		res=new Response('缺少url');
 	}else{
 		try{
 			res=await fetch(target);
-			res=await res.text();
 		}catch(err){
-			res='失败';
+			res=new Response('失败');
 		}
 	}
-	var response=new Response(res);
-	response.headers.set('Access-Control-Allow-Origin', '*');
-	//response.headers.set('Cache-Control', 'no-store');
-	return response
+	res.headers.set('Access-Control-Allow-Origin', '*');
+	//res.headers.set('Cache-Control', 'no-store');
+	return res
 }
