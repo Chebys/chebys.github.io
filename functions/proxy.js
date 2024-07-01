@@ -2,7 +2,7 @@ export async function onRequest(context){
 	const msg_h='chebys.pages.dev/proxy: ';
 	const url=new URL(context.request.url);
 	const get=p=>url.searchParams.get(p);
-	const mode=get('mode'); //'complete-page'
+	const mode=get('mode'); //complete-page
 	var tURL, res=null;
 	var target=context.request.url.match(/url=(.+)/)?.[1]; //url参数必须放最后
 	function error_res(msg){
@@ -18,8 +18,9 @@ export async function onRequest(context){
 			let headers=res.headers;
 			if(mode=='complete-page'&&headers.get('Content-Type').match('text/html')){
 				let t=await res.text();
-				t=t.replaceAll(/src="\/(?=[^\/])/g, `src="${tURL.origin}/`);
-				t=t.replaceAll(/href="\/(?=[^\/])/g, `href="${tURL.origin}/`);
+				let rep=`$1="/proxy?url=${tURL.origin}/`;
+				//let rep=`$1="${tURL.origin}/`;
+				t=t.replaceAll(/(src|href)="\/(?=[^\/])/g, rep);
 				res=new Response(t)
 			}else{
 				res=new Response(await res.blob());
