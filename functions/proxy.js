@@ -18,9 +18,9 @@ export async function onRequest(context){
 			let headers=res.headers;
 			if(mode=='complete-page'&&headers.get('Content-Type').match('text/html')){
 				let t=await res.text();
-				let rep=`$1="/proxy?url=${tURL.origin}/`;
-				//let rep=`$1="${tURL.origin}/`;
-				t=t.replaceAll(/(src|href)="\/(?=[^\/])/g, rep);
+				let rep=` $1="/proxy?mode=complete-page&url=${tURL.origin}/`;
+				//let rep=` $1="${tURL.origin}/`;
+				t=t.replaceAll(/ (src|href)="\/(?=[^\/])/g, rep);
 				res=new Response(t)
 			}else{
 				res=new Response(await res.blob());
