@@ -23,11 +23,11 @@ const norm=t=>t.trim().replace(/\\n/g,'').replace(/\\\"/g,'"');
 var toDataLine
 M.switchDST=()=>{
 	head='speech_character@speech_code@strings_code@strings_en@strings_cn'.split('@');
-	toDataLine=res=>[c,res[1],res[2],norm(res[3]),norm(res[4])]
+	toDataLine=(c,res)=>[c,res[1],res[2],norm(res[3]),norm(res[4])]
 }
 M.switchDS=()=>{
 	head='speech_character@speech_code@strings_en@strings_cn'.split('@');
-	toDataLine=res=>[c,res[1],norm(res[3]),norm(res[4])]
+	toDataLine=(c,res)=>[c,res[1],norm(res[3]),norm(res[4])]
 }
 
 M.getData = c=>{//c为小写角色代码，默认威尔逊
@@ -37,7 +37,7 @@ M.getData = c=>{//c为小写角色代码，默认威尔逊
 	p=new RegExp(p,'ig');
 	var res=p.exec(PO),data=[];
 	while(res){
-		data.push(toDataLine(res));
+		data.push(toDataLine(c,res));
 		res=p.exec(PO);
 	}
 	return data;
