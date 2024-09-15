@@ -42,7 +42,7 @@ body{
 @media screen and (max-width:768px){
 	.a{margin:20px;}
 }
-@media screen and (max-width:768px){
+@media screen and (max-width:425px){
 	.a{margin:10px;}
 }
 .a:hover{
