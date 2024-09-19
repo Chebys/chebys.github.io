@@ -43,7 +43,7 @@ body{
 	.a{margin:20px;}
 }
 @media screen and (max-width:425px){
-	.a{margin:10px;}
+	.a{height:60px;margin:10px;}
 }
 .a:hover{
 	transform:translateY(-10px);
