@@ -33,6 +33,21 @@ function encode(file){
 	})
 }
 
+const Status={
+	getting_list: '正在加载列表',
+	downloading: '正在下载',
+	deleting: '正在删除',
+	uploading: '正在上传',
+	done: '完成'
+}
+var statu=null
+function setStatu(code, desc){
+	statu=Status[code]
+	if(!statu)throw code
+	statu_sign.innerHTML=statu
+	if(desc)statu_sign.innerHTML+=': '+desc
+}
+
 function downloadWithDataUrl(url, fname='未知'){
 	var a=document.createElement('a')
 	a.download=fname
@@ -44,11 +59,13 @@ function downloadWithDataUrl(url, fname='未知'){
 //下面3个用作按钮监听
 function download(){ 
 	var fname=this.filename
-	statu.innerHTML='正在下载：'+fname
-	getFile(fname).then(dataurl=>downloadWithDataUrl(dataurl, fname))
+	setStatu('downloading', fname)
+	getFile(fname)
+		.then(dataurl=>downloadWithDataUrl(dataurl, fname))
+		.then(setStatu())
 }
 function deletefile(){
-	statu.innerHTML='正在删除：'+this.filename
+	setStatu('deleting', this.filename)
 	delFile(this.filename)
 		.then(console.log)
 		.then(refreshList)
@@ -59,7 +76,7 @@ function submit(){
 		alert('文件不能超过20Mb')
 		return
 	}
-	statu.innerHTML='正在上传'
+	setStatu('uploading')
 	encode(file)
 		.then(dataurl=>setFile(file.name, dataurl))
 		.then(console.log)
@@ -106,10 +123,10 @@ function refresh(list){
 	for(let fname of list){
 		filelist.append(fileContainer(fname))
 	}
-	statu.innerHTML='加载完成'
+	setStatu('done')
 }
 function refreshList(){
-	statu.innerHTML='正在加载列表'
+	setStatu('getting_list')
 	return getList().then(refresh)
 }
 
