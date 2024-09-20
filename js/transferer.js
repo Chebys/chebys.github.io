@@ -10,7 +10,7 @@ function KV({mode, filename, body}){
 async function getList(){
 	var res=await KV({mode:'getlist'})
 	res=await res.json() //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
-	console.log(res)
+	//console.log(res)
 	return res.keys.map(k=>k.name)
 }
 async function getFile(name){
@@ -44,9 +44,11 @@ function downloadWithDataUrl(url, fname='未知'){
 //下面3个用作按钮监听
 function download(){ 
 	var fname=this.filename
+	statu.innerHTML='正在下载：'+fname
 	getFile(fname).then(dataurl=>downloadWithDataUrl(dataurl, fname))
 }
 function deletefile(){
+	statu.innerHTML='正在删除：'+this.filename
 	delFile(this.filename)
 		.then(console.log)
 		.then(refreshList)
@@ -57,6 +59,7 @@ function submit(){
 		alert('文件不能超过20Mb')
 		return
 	}
+	statu.innerHTML='正在上传'
 	encode(file)
 		.then(dataurl=>setFile(file.name, dataurl))
 		.then(console.log)
@@ -106,7 +109,7 @@ function refresh(list){
 	statu.innerHTML='加载完成'
 }
 function refreshList(){
-	statu.innerHTML='正在加载'
+	statu.innerHTML='正在加载列表'
 	return getList().then(refresh)
 }
 
