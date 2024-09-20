@@ -10,6 +10,7 @@ function KV({mode, filename, body}){
 async function getList(){
 	var res=await KV({mode:'getlist'})
 	res=await res.json() //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
+	console.log(res)
 	return res.keys.map(k=>k.name)
 }
 async function getFile(name){
@@ -18,6 +19,10 @@ async function getFile(name){
 }
 async function setFile(name, str){
 	var res=await KV({mode:'set', filename:name, body:str})
+	return res.text()
+}
+async function delFile(name){
+	var res=await KV({mode:'delete', filename:name})
 	return res.text()
 }
 function encode(file){
@@ -36,15 +41,26 @@ function downloadWithDataUrl(url, fname='未知'){
 	a.remove()
 }
 
-function download(){ //用于下载按钮
+//下面3个用作按钮监听
+function download(){ 
 	var fname=this.filename
 	getFile(fname).then(dataurl=>downloadWithDataUrl(dataurl, fname))
 }
-function submit(){ //用于提交按钮
+function deletefile(){
+	delFile(this.filename)
+		.then(console.log)
+		.then(refreshList)
+}
+function submit(){
 	var file = this.targetfiles[0]
+	if(file.size > 1024**2 * 20){
+		alert('文件不能超过20Mb')
+		return
+	}
 	encode(file)
 		.then(dataurl=>setFile(file.name, dataurl))
 		.then(console.log)
+		.then(refreshList)
 }
 
 function fileContainer(filename){
@@ -52,16 +68,22 @@ function fileContainer(filename){
 	div.innerHTML=filename
 	div.classList.add('file-container')
 	
-	var btn=document.createElement('button')
-	btn.innerHTML='下载'
-	btn.filename=filename
-	btn.addEventListener('click', download)
-	div.append(btn)
+	var dlbtn=document.createElement('button')
+	dlbtn.innerHTML='下载'
+	dlbtn.filename=filename
+	dlbtn.addEventListener('click', download)
+	div.append(dlbtn)
+	
+	var delbtn=document.createElement('button')
+	delbtn.innerHTML='删除'
+	delbtn.filename=filename
+	delbtn.addEventListener('click', deletefile)
+	div.append(delbtn)
 	return div
 }
 function newFileContainer(){	
 	var div=document.createElement('div')
-	div.innerHTML=filename
+	div.innerHTML='+'
 	div.classList.add('file-container')
 	
 	var input=document.createElement('input')
@@ -76,11 +98,19 @@ function newFileContainer(){
 	return div
 }
 
-getList().then(list=>{
+function refresh(list){
+	filelist.replaceChildren()
 	for(let fname of list){
-		container.append(fileContainer(fname))
+		filelist.append(fileContainer(fname))
 	}
-	container.append(newFileContainer())
-})
+	statu.innerHTML='加载完成'
+}
+function refreshList(){
+	statu.innerHTML='正在加载'
+	return getList().then(refresh)
+}
+
+refreshList()
+container.append(newFileContainer())
 
 })

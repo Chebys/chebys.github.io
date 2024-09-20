@@ -12,12 +12,12 @@ export async function onRequest(context){
 		if(filename){
 			if(mode=='set'){
 				let value=await context.request.text();
-				res='succeeded';
+				res='set succeeded';
 				await KV.put(filename, value)
 					.catch(err=>{res='failed'})
 			}else if(mode=='delete'){
 				KV.delete(filename)
-				res='succeeded'
+				res='delete succeeded'
 			}else{
 				res=await KV.get(filename)
 			}
