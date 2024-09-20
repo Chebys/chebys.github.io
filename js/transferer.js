@@ -38,8 +38,7 @@ function downloadWithDataUrl(url, fname='未知'){
 
 function download(){ //用于下载按钮
 	var fname=this.filename
-	getFile(fname)
-		.then(dataurl=>downloadWithDataUrl(dataurl, fname))
+	getFile(fname).then(dataurl=>downloadWithDataUrl(dataurl, fname))
 }
 function submit(){ //用于提交按钮
 	var file = this.targetfiles[0]
@@ -79,8 +78,9 @@ function newFileContainer(){
 
 getList().then(list=>{
 	for(let fname of list){
-		container.append(fileContainer(name))
+		container.append(fileContainer(fname))
 	}
+	container.append(newFileContainer())
 })
 
 })
