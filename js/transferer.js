@@ -52,7 +52,7 @@ function deletefile(){
 		.then(refreshList)
 }
 function submit(){
-	var file = this.targetfiles[0]
+	var file = this.getFile()
 	if(file.size > 1024**2 * 20){
 		alert('文件不能超过20Mb')
 		return
@@ -92,7 +92,7 @@ function newFileContainer(){
 	
 	var btn=document.createElement('button')
 	btn.innerHTML='上传'
-	btn.targetfiles=input.files
+	btn.getFile = ()=>input.files[0]
 	btn.addEventListener('click', submit)
 	div.append(btn)
 	return div
