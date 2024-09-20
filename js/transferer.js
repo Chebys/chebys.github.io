@@ -1,6 +1,6 @@
 addEventListener('load',  _=>{
 
-const url='/kv_transferer';
+const url='/kv_transferer'
 function KV({mode, filename, body}){
 	var furl=url+'?', method='POST'
 	if(mode)furl += '&mode='+mode
@@ -8,9 +8,8 @@ function KV({mode, filename, body}){
 	return fetch(furl, {method, body})
 }
 async function getList(){
-	//形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
 	var res=await KV({mode:'getlist'})
-	res=await res.json()
+	res=await res.json() //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
 	return res.keys.map(k=>k.name)
 }
 async function getFile(name){
@@ -37,19 +36,51 @@ function downloadWithDataUrl(url, fname='未知'){
 	a.remove()
 }
 
-var testname='test.txt'
-function download(){
-	getFile(testname)
-		.then(dataurl=>downloadWithDataUrl(dataurl, testname))
+function download(){ //用于下载按钮
+	var fname=this.filename
+	getFile(fname)
+		.then(dataurl=>downloadWithDataUrl(dataurl, fname))
 }
-function submit(){
-	var file = file0.files[0]
+function submit(){ //用于提交按钮
+	var file = this.targetfiles[0]
 	encode(file)
-		.then(dataurl=>setFile(testname, dataurl))
+		.then(dataurl=>setFile(file.name, dataurl))
 		.then(console.log)
 }
 
-downloadbtn.addEventListener('click', download);
-submitbtn.addEventListener('click', submit);
+function fileContainer(filename){
+	var div=document.createElement('div')
+	div.innerHTML=filename
+	div.classList.add('file-container')
+	
+	var btn=document.createElement('button')
+	btn.innerHTML='下载'
+	btn.filename=filename
+	btn.addEventListener('click', download)
+	div.append(btn)
+	return div
+}
+function newFileContainer(){	
+	var div=document.createElement('div')
+	div.innerHTML=filename
+	div.classList.add('file-container')
+	
+	var input=document.createElement('input')
+	input.type='file'
+	div.append(input)
+	
+	var btn=document.createElement('button')
+	btn.innerHTML='上传'
+	btn.targetfiles=input.files
+	btn.addEventListener('click', submit)
+	div.append(btn)
+	return div
+}
+
+getList().then(list=>{
+	for(let fname of list){
+		container.append(fileContainer(name))
+	}
+})
 
 })
