@@ -43,7 +43,7 @@ const Status={
 var statu=null
 function setStatu(code, desc){
 	statu=Status[code]
-	if(!statu)throw code
+	if(!statu)throw {statu, code, desc}
 	statu_sign.innerHTML=statu
 	if(desc)statu_sign.innerHTML+=': '+desc
 }
