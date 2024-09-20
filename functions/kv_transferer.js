@@ -8,17 +8,24 @@ export async function onRequest(context){
 	
 	if(mode=='getlist'){
 		res=JSON.stringify(await KV.list())
-	}else if(mode=='set'){
-		let value=await context.request.text();
-		res='succeeded';
-		await KV.put(filename, value)
-			.catch(err=>{res='failed'})
-	}else if(mode=='delete'){
-		KV.delete(filename)
-		res='succeeded'
 	}else{
-		res=await KV.get(filename)
+		if(filename){
+			if(mode=='set'){
+				let value=await context.request.text();
+				res='succeeded';
+				await KV.put(filename, value)
+					.catch(err=>{res='failed'})
+			}else if(mode=='delete'){
+				KV.delete(filename)
+				res='succeeded'
+			}else{
+				res=await KV.get(filename)
+			}
+		}else{
+			res='缺少filename'
+		}
 	}
+
 	var response=new Response(res)
 	response.headers.set('Access-Control-Allow-Origin', '*');
 	response.headers.set('Cache-Control', 'no-store');
