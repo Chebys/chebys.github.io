@@ -54,6 +54,7 @@ function downloadWithDataUrl(url, fname='未知'){
 	a.href=url
 	a.click()
 	a.remove()
+	return 'done'
 }
 
 //下面3个用作按钮监听
@@ -62,7 +63,7 @@ function download(){
 	setStatu('downloading', fname)
 	getFile(fname)
 		.then(dataurl=>downloadWithDataUrl(dataurl, fname))
-		.then(setStatu())
+		.then(setStatu)
 }
 function deletefile(){
 	setStatu('deleting', this.filename)
