@@ -79,6 +79,7 @@ function submit(){
 	}
 	setStatu('uploading')
 	encode(file)
+		.then(r=>(console.log(r), r))
 		.then(dataurl=>setFile(file.name, dataurl))
 		.then(console.log)
 		.then(refreshList)
