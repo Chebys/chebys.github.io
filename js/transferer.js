@@ -1,11 +1,24 @@
 addEventListener('load',  _=>{
 
 const url='/kv_transferer'
-function KV({mode, filename, body}){
+function KV({mode, filename, body, onprogress}){
 	var furl=url+'?', method='POST'
 	if(mode)furl += '&mode='+mode
 	if(filename)furl += '&filename='+encodeURIComponent(filename)
-	return fetch(furl, {method, body})
+	//return fetch(furl, {method, body})
+	const xhr=new XMLHttpRequest
+	xhr.open(method, furl)
+	xhr.onprogress=onprogress
+	return new Promise((resolve, reject)=>{
+		xhr.onload=function(){
+			if(xhr.status==200)resolve(this.responseText)
+			else reject(this.response)
+		}
+		xhr.send(body)
+	})
+}
+function onprogress({loaded, total}){
+	console.log('progress:', loaded, '/', total)
 }
 async function getList(){
 	var res=await KV({mode:'getlist'})
@@ -14,15 +27,15 @@ async function getList(){
 	return res.keys.map(k=>k.name)
 }
 async function getFile(name){
-	var res=await KV({filename:name})
+	var res=await KV({filename:name, onprogress})
 	return res.text()
 }
 async function setFile(name, str){
-	var res=await KV({mode:'set', filename:name, body:str})
+	var res=await KV({mode:'set', filename:name, body:str, onprogress})
 	return res.text()
 }
 async function delFile(name){
-	var res=await KV({mode:'delete', filename:name})
+	var res=await KV({mode:'delete', filename:name, onprogress})
 	return res.text()
 }
 function encode(file){
@@ -79,7 +92,6 @@ function submit(){
 	}
 	setStatu('uploading')
 	encode(file)
-		.then(r=>(console.log(r), r))
 		.then(dataurl=>setFile(file.name, dataurl))
 		.then(console.log)
 		.then(refreshList)

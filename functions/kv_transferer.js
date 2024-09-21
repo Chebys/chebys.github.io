@@ -9,7 +9,7 @@ export async function onRequest(context){
 	if(mode=='getlist'){
 		res=JSON.stringify(await KV.list())
 	}else if(mode=='test'){
-		res = new FileReader //不知道有没有这玩意
+		res = new FileReader //后端没有这玩意
 	}else{
 		if(filename){
 			if(mode=='set'){
