@@ -22,7 +22,7 @@ function onprogress({loaded, total}){
 }
 async function getList(){
 	var res=await KV({mode:'getlist'})
-	res=JSON.stringify(res) //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
+	res=JSON.parse(res) //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
 	//console.log(res)
 	return res.keys.map(k=>k.name)
 }
