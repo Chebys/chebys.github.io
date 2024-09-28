@@ -1,0 +1,21 @@
+.radio-set{
+	display:inline-block;
+	background:#eee;
+	border-radius:10px;
+	margin:0 10px;
+}
+.radio-set input[type=radio]{display:none;}
+.radio-set label{
+	display:inline-block;
+	margin:2px 5px;
+	padding:4px 10px;
+	border-radius:10px;
+	font-size:14px;
+	transition:0.1s;
+}
+.radio-set label:hover{background:var(--tcolorlight);}
+.radio-set input[type=radio]:checked+label{
+	
+	background:var(--tcolor);
+	color:white;
+}

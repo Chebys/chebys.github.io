@@ -18,7 +18,7 @@ function KV({mode, filename, body, onprogress}){
 	})
 }
 function onprogress({loaded, total}){
-	console.log('progress:', loaded, '/', total)
+	console.log('progress:', loaded, '/', total) //total总是0？
 }
 async function getList(){
 	var res=await KV({mode:'getlist'})
