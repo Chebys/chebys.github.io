@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>pixiv画师档案</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="shortcut icon" href="/icon/pixiv.ico">
+<link rel="stylesheet" href="/css/radio-set.css">
+<link rel="stylesheet" href="/css/pid.css">
+<!--<script src="/js/proxy.js"></script>-->
+<script type="module" src="/js/pid.js"></script>
+</head>
+<body>
+<div id="main">
+  <table id="tp">
+  <thead>
+    <tr>
+    <th data-key="id">pid<div class="sortorder"></div></th>
+    <th>头像</th>
+    <th data-key="n">昵称</th>
+    <th data-key="t">tag</th>
+    <th data-key="s_porn">评分</th>
+    <td>操作</td>
+    </tr>
+  </thead>
+  <tbody id="opt"></tbody>
+  <tfoot>
+    <tr>
+    <td><input id="iid" type="number" step="1"></td>
+	<td></td>
+    <td><input id="in"></td>
+    <td><input id="it"></td>
+    <td></td>
+    <td><button id="addbt">添加</button></td>
+    </tr>
+  </tfoot>
+  </table>
+  <a id="bt"></a>
+</div>
+<div id="set">
+  <div id="setlb"></div>
+  <div>non-h<span class="radio-set" data-name="h-nonh" data-value="," data-text="显示,隐藏"></span></div>
+  <div>停更<span class="radio-set" data-name="h-pus" data-value="," data-text="显示,隐藏"></span></div>
+  <div>已注销<span class="radio-set" data-name="h-dld" data-value="," data-text="显示,隐藏"></span></div>
+  <button id="sjbt">管理数据</button>
+</div>
+<div id="pn">
+  <div id="pn1">
+    <div id="avt" class="avt">
+      <div id="as">
+        <label class="ao"><input type="radio" name="avt" value="">无</label>
+        <label class="ao"><input type="radio" name="avt" value="jpg">jpg</label>
+        <label class="ao"><input type="radio" name="avt" value="png">png</label>
+        <label class="ao"><input type="radio" name="avt" value="gif">gif</label>
+      </div>
+    </div>
+    <div class="dti">pid: <span id="pid"></span></div>
+    <div class="dti">昵称<input id="cn" class="name"></div>
+    <div class="dti">别名<input id="cb"></div>
+    <div class="dti">tag<input id="ct"></div>
+    <div class="dti">评分<sub>*0~6</sub></div>
+    <div id="score">
+      <label for="s_porn"><div>色情🥵</div><input id="s_porn" type="number" min="0" max="6"></label>
+      <label for="s_skill"><div>技术💯</div><input id="s_skill" type="number" min="0" max="6"></label>
+      <label for="s_style"><div>画风🎨</div><input id="s_style" type="number" min="0" max="6"></label>
+    </div>
+    <div class="chk"><input type="checkbox" id="pus">停更</div>
+    <div class="chk"><input type="checkbox" id="dld">已注销</div>
+    <div>备注：<br/><textarea id="ps"></textarea></div>
+    <div class="bottom-bar">
+	  <button id="savbt">保存</button>
+      <button id="dltbt">移除</button>
+	</div>
+  </div>
+  <div id="pn2">
+    <div id="search">
+      全名搜索（无法搜索隐藏作者）
+      <input id="search_q">
+      <div class="bottom-bar">
+	    <button id="search_pre">上一个</button>
+		<button id="search_next">下一个</button>
+	  </div>
+    </div>
+    <div id="nv">
+      <a class="nvb" href="#tp"></a>
+      <a id="loc" class="nvb"></a>
+      <a class="nvb" href="#bt" style="transform:rotate(180deg)"></a>
+    </div>
+  </div>
+</div>
+<div id="flt">保存成功 <img src="/icon/tick.svg" align="top"></div>
+
+<div id="wctr">
+  <div id="jsonw" onclick="event.stopPropagation()">
+    <div id="x">×</div>
+	<textarea id="jsont"></textarea>
+	<div class="bottom-bar"><button id="importbt">导入</button><button id="exportbt">导出</button></div>
+  </div>
+</div>
+</body>
+</html>
