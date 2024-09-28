@@ -51,7 +51,7 @@ class Aut{
 		Object.assign(aut, obj);
 		return aut;
 	}
-	constructor(pid,name,tag){
+	constructor(pid, name, tag){
 		this[Aut.idKey]=pid;
 		if(name)this.n=name;
 		if(tag)this.t=tag;
@@ -65,9 +65,12 @@ var json, Data, authorInfo, hide=new Set(),
 	pre=Symbol('pre'), next=Symbol('next');
 
 function validJson(str){ //若合法则返回解析后的对象；否则返回假值
-	//todo: try...catch
-	var obj = JSON.parse(str);
-	return obj.meta && obj.pixiv &&obj;
+	try{
+		let obj = JSON.parse(str);
+		return obj.meta && obj.pixiv && obj;
+	}catch(e){
+		return false;
+	}
 }
 function init(override){
 	json = override || localStorage.getItem(key);
