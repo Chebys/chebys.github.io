@@ -1,28 +1,47 @@
+import {createStore, set as idb_set, del as idb_del, entries} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
 //import LSProxy from '/js/modules/localStorageProxy.js';
 import FileInput from '/js/modules/offscreen-file-input.js';
 import {downloadBlob} from '/js/modules/downloadUtils.js';
-import {Radio} from '/js/modules/radio-set.js';
+import '/js/modules/radio-set.js';
 
-//todo: 作者链接，全名搜索完善
-//id(get), n, a 头像格式, b 别名, t tag, nonh(get), s_porn, s_skill, s_style 评分, pus, dld, ps 备注
+//todo: 数据管理，作者链接，全名搜索完善
+//id(get), n, a 头像格式(不含'.'), b 别名, t tag, nonh(get), s_porn, s_skill, s_style 评分, pus, dld, ps 备注
 //假值默认显示为空字符串。例外：评分
 
 const key = 'authorInfo',
 	GEBI = id=>document.getElementById(id),
 	CE = t=>document.createElement(t),
 	opt = GEBI('opt'),
+	IDB = { //图片数据库
+		images: Object.create(null),
+		urls: Object.create(null),
+		store: createStore('pid', 'pavatar'),
+		async loadAll(){
+			for(let [name, file] of await entries(this.store)){
+				this.images[name] = file;
+			}
+		},
+		get(name){ //返回ObjectURL或假值
+			var img = this.images[name];
+			if(!img)return;
+			if(!this.urls[name])this.urls[name] = URL.createObjectURL(img);
+			return this.urls[name];
+		},
+		async set(name, file){
+			if(name in this.images)throw '文件名冲突';
+			this.images[name] = file;
+			return idb_set(name, file, this.store)
+		},
+		async del(name){
+			return idb_del(name, this.store);
+		}
+	},
 	panel = (()=>{
-		const avtRadio=Radio('avt'),
-			getNum=id=>{
-				var v=GEBI(id).value;
-				return v&&parseInt(v); //区分'0'和''
-			};
+		function getNum(id){
+			var v=GEBI(id).value;
+			return v&&parseInt(v); //区分'0'和''
+		}
 		return{
-			set a(a){
-				avtRadio.value=a||'';
-				GEBI('avt').style.backgroundImage=`url("/pavatar/${a ? current.id+'.'+a : 'avatar.jpg'}")`;
-			},
-			get a(){return avtRadio.value},
 			set n(n){GEBI('cn').value=n||'';},
 			get n(){return GEBI('cn').value;},
 			set b(b){GEBI('cb').value=b||'';},
@@ -58,7 +77,11 @@ class Aut{
 	}
 	get id(){return this[Aut.idKey];}//下策，只是不希望JSON解析id属性
 	get nonh(){return this.s_porn===0;}
+	get imgUrl(){ //css属性
+		return `url("${this.a && IDB.get(this.id+'.'+this.a) || '/img/default_avatar.jpg'}")`;
+	}
 }
+const default_aut = new Aut('未选择');
 
 var json, Data, authorInfo, hide=new Set(),
 	head, current, tail, //链表；current只应使用sort函数或detl函数改变；current要么合法（在链表中），要么为假
@@ -75,7 +98,6 @@ function validJson(str){ //若合法则返回解析后的对象；否则返回�
 function init(override){
 	json = override || localStorage.getItem(key);
 	Data = validJson(json);
-	console.log(Data)
 	if(!Data){
 		Data = {meta:{}, pixiv:{}};
 		setai();
@@ -83,6 +105,7 @@ function init(override){
 	authorInfo = Data.pixiv;
 	for(let i in authorInfo)
 		authorInfo[i]=Aut.fromObj(authorInfo[i], i);
+	return IDB.loadAll();
 }
 function setai(reload, fun){ //保存全部信息并执行回调
 	json=JSON.stringify(Data);
@@ -157,14 +180,14 @@ function loada(resort){ //根据ai加载列表
 		if(a.pus)r.classList.add('pause');
 		if(a.dld)r.classList.add('deleted');
 		for(let j=0;j<6;j++)d[j]=CE('td');//pid，头像，昵称，tag，评分，操作
-		let lk=CE('a'),avt=CE('div'),star=CE('img'),b=CE('button');
+		let lk=CE('a'), avt=CE('div'), star=CE('img'), b=CE('button');
 		lk.innerHTML=a.id;
 		lk.href='https://www.pixiv.net/users/'+a.id;
 		lk.target="_blank";
 		d[0].appendChild(lk);
 		if(a.a){
 			avt.classList.add('avt');
-			avt.style.backgroundImage=`url("/pavatar/${a.id+'.'+a.a}")`;
+			avt.style.backgroundImage=a.imgUrl;
 			d[1].appendChild(avt);
 		}
 		d[2].className='name';
@@ -194,8 +217,9 @@ function detl(a){ //为current赋值，不保证a合法
 	doDetl(a);
 	return true;
 }
-function doDetl(a={id:'未选择'}){ //右侧详细信息
+function doDetl(a=default_aut){ //右侧详细信息
 	GEBI('pid').innerHTML=a.id;
+	GEBI('avt').style.backgroundImage=a.imgUrl;
 	for(let k in panel)panel[k]=a[k];
 }
 function sav(){
@@ -254,9 +278,24 @@ function search(reverse){
 sort.key = 'id';
 sort.asc = 1; //升序
 
-init();
-loada(1);
+init().then(()=>loada(1));
 
+GEBI('avt').addEventListener('click', ()=>{
+	if(!current)return;
+	let validsuffixes = ['.jpg', '.png', '.gif'];
+	FileInput(validsuffixes.join())
+		.then(f=>{
+			let suffix=f.name.match(/\.[^.]+$/)?.[0];
+			if(!validsuffixes.includes(suffix))throw '无效的格式'; //可能有用户瞎搞
+			if(current.a)IDB.del(current.id+'.'+current.a); //无需等待兑现（大概？）
+			current.a=suffix.slice(1);
+			let fname=current.id+suffix;
+			return IDB.set(fname, f);
+		}).then(()=>{
+			setai();
+			doDetl(current);
+		}, alert);
+})
 savbt.addEventListener('click',sav);
 dltbt.addEventListener('click',()=>current&&del(current.id));
 addbt.addEventListener('click',()=>{
@@ -292,16 +331,17 @@ wctr.addEventListener('click',()=>showjson(0));
 x.addEventListener('click',()=>showjson(0));
 importbt.addEventListener('click',()=>{
 	FileInput('.json')
-	  .then(f=>f.text())
-	  .then(str=>{
-		  if(!validJson(str)){
-			  alert('无效的文件！');
-			  return;
-		  }
-		  init(str);
-		  setai(1);
-		  showjson(1);
-	  })
+		.then(f=>f.text())
+		.then(str=>{
+			if(!validJson(str)){
+				alert('无效的文件！');
+				return;
+			}
+			return init(str);
+		}).then(()=>{
+			setai(1);
+			showjson(1);
+		})
 });
 exportbt.addEventListener('click',()=>{
 	var file=new Blob([json]);
