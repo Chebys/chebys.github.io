@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Test</title>
+<style>
+body{margin:0;}
+#container{height:100vh;width:90%;margin:auto;}
+#wb{display:block;box-sizing:border-box;height:90%;width:100%;}
+button{float:right;}
+</style>
+<script type="module">
+import {createStore, set, del, entries, setMany} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
+set('test', new Blob(['testestestest'])).then(()=>alert('成功'), alert);
+</script>
+</head>
+<body>
+<div id="container">
+<textarea id="wb"></textarea>
+<div>当前状态：<span id="statu"></span><button id="submit">提交</button><button id="download">加载</button><div>
+</div>
+</body>
+</html>

@@ -57,6 +57,7 @@ function setStatu(code, desc){
 	if(!statu)throw {statu, code, desc}
 	statu_sign.innerHTML=statu
 	if(desc)statu_sign.innerHTML+=': '+desc
+	if(code=='done')setProgress()
 }
 function setProgress(loaded, total){
 	if(typeof loaded != 'number'){
