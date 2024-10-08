@@ -1,7 +1,8 @@
-import {createStore, set as idb_set, del as idb_del, entries} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
+import {createStore, set as idb_set, del as idb_del, entries, setMany} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
 //import LSProxy from '/js/modules/localStorageProxy.js';
 import FileInput from '/js/modules/offscreen-file-input.js';
 import {downloadBlob} from '/js/modules/downloadUtils.js';
+import {packMap, unpack} from '/js/modules/filepackager.js';
 import '/js/modules/radio-set.js';
 
 //todo: 数据管理，作者链接，全名搜索完善
@@ -34,6 +35,14 @@ const key = 'authorInfo',
 		},
 		async del(name){
 			return idb_del(name, this.store);
+		},
+		import(blob){
+			unpack(blob)
+				.then(map=>setMany(Object.entries(map), this.store))
+				.then(()=>alert('导入完成，请刷新页面'), alert)
+		},
+		export(){
+			return packMap(this.images);
 		}
 	},
 	panel = (()=>{
@@ -95,19 +104,19 @@ function validJson(str){ //若合法则返回解析后的对象；否则返回�
 		return false;
 	}
 }
-function init(override){
+function initData(override){
 	json = override || localStorage.getItem(key);
 	Data = validJson(json);
 	if(!Data){
 		Data = {meta:{}, pixiv:{}};
-		setai();
+		setData();
 	}
 	authorInfo = Data.pixiv;
 	for(let i in authorInfo)
 		authorInfo[i]=Aut.fromObj(authorInfo[i], i);
 	return IDB.loadAll();
 }
-function setai(reload, fun){ //保存全部信息并执行回调
+function setData(reload, fun){ //保存全部信息并执行回调
 	json=JSON.stringify(Data);
 	localStorage.setItem(key,json);
 	if(reload)loada(1);
@@ -167,15 +176,15 @@ function sort(k){ //排序并生成链表
 	}
 	function empty(v){return typeof v!='number'&&!v;}
 }
-function loada(resort){ //根据ai加载列表
+function loada(resort){ //根据 authorInfo 加载列表
 	if(resort)sort();
 	opt.innerHTML='';
 	for(let a=head;a;a=a[next])opt.appendChild(getr(a));
 	detl(current)||doDetl();//显示当前信息或“未选择”
-	function getr(a){//根据ai生成tr
+	function getr(a){//根据 authorInfo 生成 tr
 		let r=CE('tr'),d=[];
 		r.id=a.id;
-		r.onclick=function(){detl(a)};
+		r.addEventListener('click', clickTr);
 		if(a.nonh)r.classList.add('nonh');
 		if(a.pus)r.classList.add('pause');
 		if(a.dld)r.classList.add('deleted');
@@ -198,13 +207,10 @@ function loada(resort){ //根据ai加载列表
 			d[4].appendChild(star);
 		}
 		b.innerHTML='移除';
-		b.onclick=e=>{
-			e.stopPropagation();
-			del(a.id);
-		};
+		b.addEventListener('click', clickRemoveBt);
 		d[5].appendChild(b);
 		for(let j=0;j<6;j++)r.appendChild(d[j]);
-		r.addEventListener('dblclick',()=>{lk.click();});
+		r.addEventListener('dblclick', dblclickTr);
 		return r;
 	}
 }
@@ -225,18 +231,18 @@ function doDetl(a=default_aut){ //右侧详细信息
 function sav(){
 	if(!current)return;
 	for(let k in panel)current[k]=panel[k];
-	setai(0,function(){//若非按id排序，是否重排？
+	setData(0,function(){//若非按id排序，是否重排？
 		loada();
 		flt.style.animationName='svd';
 		setTimeout(function(){flt.style.animationName='';},1600);
 	});
 }
-function del(i){ //需保证i合法
+function del(i){ //需保证i合法且为数字
 	if(i<0)return;//理论上不会出现
 	if(!confirm('确定移除？'))return;
 	if(current.id==i)current=0;
 	delete authorInfo[i];
-	setai(1);
+	setData(1);
 }
 function locate(){ //这里假设所有行高度相同
 	if(!current)return;
@@ -274,11 +280,23 @@ function search(reverse){
 	}
 }
 
+//事件监听器
+function clickTr(){
+	detl(authorInfo[this.id]);
+}
+function dblclickTr(){
+	this.querySelector('td>a').click();
+}
+function clickRemoveBt(e){
+	e.stopPropagation();
+	var tr=this.closest('tr');
+	del(parseInt(tr.id));
+}
 
 sort.key = 'id';
 sort.asc = 1; //升序
 
-init().then(()=>loada(1));
+initData().then(()=>loada(1));
 
 GEBI('avt').addEventListener('click', ()=>{
 	if(!current)return;
@@ -292,7 +310,7 @@ GEBI('avt').addEventListener('click', ()=>{
 			let fname=current.id+suffix;
 			return IDB.set(fname, f);
 		}).then(()=>{
-			setai();
+			setData();
 			doDetl(current);
 		}, alert);
 })
@@ -306,7 +324,7 @@ addbt.addEventListener('click',()=>{
 	if(id<=0){alert('输入无效');return;}
 	if(authorInfo[id])alert('pid已存在');
 	else authorInfo[id]=new Aut(id,n,t);
-	setai(1,()=>detl(authorInfo[id]));
+	setData(1,()=>detl(authorInfo[id]));
 });
 for(let n of ['nonh','pus','dld']){
 	let cb=document.getElementsByName('h-'+n);
@@ -329,24 +347,28 @@ loc.addEventListener('click',locate);
 sjbt.addEventListener('click',()=>showjson(1));
 wctr.addEventListener('click',()=>showjson(0));
 x.addEventListener('click',()=>showjson(0));
-importbt.addEventListener('click',()=>{
+
+importbt.addEventListener('click', ()=>{
 	FileInput('.json')
 		.then(f=>f.text())
 		.then(str=>{
-			if(!validJson(str)){
-				alert('无效的文件！');
-				return;
-			}
-			return init(str);
+			if(!validJson(str))throw '无效的文件！';
+			return initData(str);
 		}).then(()=>{
-			setai(1);
+			setData(1);
 			showjson(1);
-		})
+		}, alert)
 });
-exportbt.addEventListener('click',()=>{
+exportbt.addEventListener('click', ()=>{
 	var file=new Blob([json]);
 	downloadBlob(file, 'authorInfo.json');
 });
+
+importimgbt.addEventListener('click', ()=>{
+	FileInput('.bin').then(blob=>IDB.import(blob));
+})
+exportimgbt.addEventListener('click', ()=>downloadBlob(IDB.export(), 'pavatar.bin'));
+
 addEventListener('keydown',e=>{
 	switch(e.keyCode){
 		case 38:
