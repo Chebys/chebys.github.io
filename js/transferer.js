@@ -18,7 +18,8 @@ function KV({mode, filename, body, onprogress}){
 	})
 }
 function onprogress({loaded, total}){
-	console.log('progress:', loaded, '/', total) //total总是0？
+	//console.log('progress:', loaded, '/', total) total总是0？
+	setProgress(loaded, total)
 }
 async function getList(){
 	var res=await KV({mode:'getlist'})
@@ -56,6 +57,14 @@ function setStatu(code, desc){
 	if(!statu)throw {statu, code, desc}
 	statu_sign.innerHTML=statu
 	if(desc)statu_sign.innerHTML+=': '+desc
+}
+function setProgress(loaded, total){
+	if(typeof loaded != 'number'){
+		progress_sign.innerHTML='无'
+		return
+	}
+	progress_sign.innerHTML=loaded
+	if(total)progress_sign.innerHTML += ' / '+total
 }
 
 function downloadWithDataUrl(url, fname='未知'){
