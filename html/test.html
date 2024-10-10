@@ -13,15 +13,15 @@ button{float:right;}
 <script type="module">
 import {createStore, set, del} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm'
 import fin from '/js/modules/offscreen-file-input.js'
-let file=await fin()
-let blob=file.slice(1)
-set('ftest', blob).catch(alert)
+testbtn.onclick=()=>fin()
+  .then(file=>file.slice(1))
+  .then(blob=>set('ftest', blob))
+  .catch(alert)
 </script>
 </head>
 <body>
 <div id="container">
-<textarea id="wb"></textarea>
-<div>当前状态：<span id="statu"></span><button id="submit">提交</button><button id="download">加载</button><div>
+<div><button id="testbtn">test</button><div>
 </div>
 </body>
 </html>
