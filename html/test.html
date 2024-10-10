@@ -11,8 +11,11 @@ body{margin:0;}
 button{float:right;}
 </style>
 <script type="module">
-import {createStore, set, del, entries, setMany} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
-set('test', new Blob(['testestestest'])).then(()=>alert('成功'), alert);
+import {createStore, set, del} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm'
+import fin from '/js/modules/offscreen-file-input.js'
+let file=await fin()
+let blob=file.slice(1)
+set('ftest', blob).catch(alert)
 </script>
 </head>
 <body>
