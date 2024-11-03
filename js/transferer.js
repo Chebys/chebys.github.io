@@ -1,23 +1,16 @@
-addEventListener('load',  _=>{
+import {XHRPromise} from '/js/modules/downloadUtils.js'
+import FileInput from '/js/modules/offscreen-file-input.js'
 
-const url='/kv_transferer'
-function KV({mode, filename, body, onprogress}){
-	var furl=url+'?', method='POST'
+const KV_URL = 'https://chebys.pages.dev/kv_transferer'
+function KV({mode, filename, body, onProgress, onUploadProgress}){
+	var furl=KV_URL+'?', method='POST'
 	if(mode)furl += '&mode='+mode
 	if(filename)furl += '&filename='+encodeURIComponent(filename)
 	//return fetch(furl, {method, body})
-	const xhr=new XMLHttpRequest
-	xhr.open(method, furl)
-	xhr.onprogress=onprogress
-	return new Promise((resolve, reject)=>{
-		xhr.onload=function(){
-			if(xhr.status==200)resolve(this.responseText)
-			else reject(this.response)
-		}
-		xhr.send(body)
-	})
+	return XHRPromise(furl, {method, body, onProgress, onUploadProgress})
+		.then(r=>r.text())
 }
-function onprogress({loaded, total}){
+function onProgress({loaded, total}){
 	//console.log('progress:', loaded, '/', total) total总是0？
 	setProgress(loaded, total)
 }
@@ -28,13 +21,13 @@ async function getList(){
 	return res.keys.map(k=>k.name)
 }
 function getFile(name){
-	return KV({filename:name, onprogress})
+	return KV({filename:name, onProgress})
 }
 function setFile(name, str){
-	return KV({mode:'set', filename:name, body:str, onprogress})
+	return KV({mode:'set', filename:name, body:str, onUploadProgress:onProgress})
 }
 function delFile(name){
-	return KV({mode:'delete', filename:name, onprogress})
+	return KV({mode:'delete', filename:name, onProgress})
 }
 function encode(file){
 	const reader = new FileReader
@@ -44,19 +37,19 @@ function encode(file){
 	})
 }
 
-const Status={
+const Status = {
 	getting_list: '正在加载列表',
 	downloading: '正在下载',
 	deleting: '正在删除',
 	uploading: '正在上传',
 	done: '完成'
 }
-var statu=null
-function setStatu(code, desc){
-	statu=Status[code]
-	if(!statu)throw {statu, code, desc}
-	statu_sign.innerHTML=statu
-	if(desc)statu_sign.innerHTML+=': '+desc
+var status = null
+function setStatus(code, desc){
+	status=Status[code]
+	if(!status)throw {status, code, desc}
+	status_sign.innerHTML=status
+	if(desc)status_sign.innerHTML+=': '+desc
 	if(code=='done')setProgress()
 }
 function setProgress(loaded, total){
@@ -80,13 +73,13 @@ function downloadWithDataUrl(url, fname='未知'){
 //下面3个用作按钮监听
 function download(){ 
 	var fname=this.filename
-	setStatu('downloading', fname)
+	setStatus('downloading', fname)
 	getFile(fname)
 		.then(dataurl=>downloadWithDataUrl(dataurl, fname))
-		.then(setStatu)
+		.then(setStatus)
 }
 function deletefile(){
-	setStatu('deleting', this.filename)
+	setStatus('deleting', this.filename)
 	delFile(this.filename)
 		.then(console.log)
 		.then(refreshList)
@@ -97,7 +90,7 @@ function submit(){
 		alert('文件不能超过20Mb')
 		return
 	}
-	setStatu('uploading')
+	setStatus('uploading')
 	encode(file)
 		.then(dataurl=>setFile(file.name, dataurl))
 		.then(console.log)
@@ -122,7 +115,7 @@ function fileContainer(filename){
 	div.append(delbtn)
 	return div
 }
-function newFileContainer(){	
+function newFileContainer(){ //暂弃
 	var div=document.createElement('div')
 	div.innerHTML='+'
 	div.classList.add('file-container')
@@ -144,14 +137,24 @@ function refresh(list){
 	for(let fname of list){
 		filelist.append(fileContainer(fname))
 	}
-	setStatu('done')
+	setStatus('done')
 }
 function refreshList(){
-	setStatu('getting_list')
+	setStatus('getting_list')
 	return getList().then(refresh)
 }
 
 refreshList()
-container.append(newFileContainer())
+//container.append(newFileContainer())
 
+document.getElementById('upload').addEventListener('click', async ()=>{
+	let file = await FileInput()
+	let dataurl = await encode(file)
+	if(dataurl.length > 1024**2 * 20){
+		alert('文件不能超过20Mb')
+		return
+	}
+	setStatus('uploading')
+	await setFile(file.name, dataurl)
+	refreshList()
 })

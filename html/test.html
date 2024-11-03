@@ -12,11 +12,21 @@ button{float:right;}
 </style>
 <script type="module">
 import {createStore, set, del} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm'
-import fin from '/js/modules/offscreen-file-input.js'
+function fin(){
+	var input=document.createElement('input');
+	input.type='file';
+	return new Promise(resolve=>{
+		input.click();
+		input.addEventListener('change', ()=>resolve(input.files[0]));
+	})
+}
 testbtn.onclick=()=>fin()
-  .then(file=>file.slice(1))
-  .then(blob=>set('ftest', blob))
-  .catch(alert)
+  .then(file=>{
+	let blob=file.slice(1)
+	console.log(blob)
+	return set('ftest', blob)
+  })
+  .catch(console.error)
 </script>
 </head>
 <body>

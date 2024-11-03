@@ -5,19 +5,30 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>文件中转站</title>
 <style>
-body{margin:0;}
-#container{height:100vh;width:90%;margin:auto;}
-#statu_sign{color:green;}
-.file-container{border:2px solid grey;border-radius:10px;margin:5px;padding:10px;}
+*{box-sizing:border-box;}
+body{margin:0;background:#def;}
+#container{height:100vh;width:90%;margin:auto;display:flex;padding:5px;}
+#panel,.file-container{background:white;box-shadow:0 0 5px rgba(100,140,140,0.3);border-radius:10px;padding:10px;margin:10px;}
+#panel{width:200px;}
+#status_sign{color:green;}
+#filelist{flex:1;overflow-y:auto;}
 .file-container button{padding:5px;}
+@media (max-width:768px){
+	#container{flex-direction:column;}
+	#panel{width:100%;}
+	#panel,.file-container{margin:10px 0;}
+}
 </style>
-<script src="/js/transferer.js"></script>
+<script src="/js/transferer.js" type="module"></script>
 </head>
 <body>
 <div id="container">
-  <div>*列表更新可能有延迟*<div>
-  <div>当前状态：<span id="statu_sign">？？？</span><div>
-  <div>当前进度：<span id="progress_sign">无</span><div>
+  <div id="panel">
+    <div>*列表更新可能有延迟*</div>
+    <div>当前状态：<span id="status_sign">？？？</span></div>
+    <div>当前进度：<span id="progress_sign">无</span></div>
+	<button id="upload">上传新文件</button>
+  </div>
   <div id="filelist"></div>
 </div>
 </body>
