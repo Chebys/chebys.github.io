@@ -5,6 +5,7 @@ body{
 #global-topbar{
 	height:60px;
 	width:100%;
+	background:white;
 	box-shadow:0 0 5px grey;
 	user-select:none;
 }
@@ -48,7 +49,7 @@ body{
 	.a{height:60px;margin:10px;}
 }
 .a:hover{
-	transform:translateY(-10px);
+	transform:translateY(-8px);
 	box-shadow:0 1px 10px #8de;
 	color:#28f;
 }

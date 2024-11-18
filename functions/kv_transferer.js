@@ -18,7 +18,7 @@ export async function onRequest(context){
 				await KV.put(filename, value)
 					.catch(err=>{res='failed'})
 			}else if(mode=='delete'){
-				KV.delete(filename)
+				await KV.delete(filename)
 				res='delete succeeded'
 			}else{
 				res=await KV.get(filename)
