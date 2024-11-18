@@ -1,4 +1,4 @@
-import {XHRPromise} from '/js/modules/downloadUtils.js'
+import {XHRPromise, downloadBlob} from '/js/modules/downloadUtils.js'
 import FileInput from '/js/modules/offscreen-file-input.js'
 
 const KV_URL = 'https://chebys.pages.dev/kv_transferer'
@@ -8,7 +8,7 @@ function KV({mode, filename, body, onProgress, onUploadProgress}){
 	if(filename)furl += '&filename='+encodeURIComponent(filename)
 	//return fetch(furl, {method, body})
 	return XHRPromise(furl, {method, body, onProgress, onUploadProgress})
-		.then(r=>r.text())
+		.then(r => mode ? r.text() : r.blob())
 }
 function onProgress({loaded, total}){
 	//console.log('progress:', loaded, '/', total) total总是0？
@@ -61,21 +61,12 @@ function setProgress(loaded, total){
 	if(total)progress_sign.innerHTML += ' / '+total
 }
 
-function downloadWithDataUrl(url, fname='未知'){
-	var a=document.createElement('a')
-	a.download=fname
-	a.href=url
-	a.click()
-	a.remove()
-	return 'done'
-}
-
 //下面3个用作按钮监听
 function download(){ 
 	var fname=this.filename
 	setStatus('downloading', fname)
 	getFile(fname)
-		.then(dataurl=>downloadWithDataUrl(dataurl, fname))
+		.then(blob=>downloadBlob(blob, fname))
 		.then(setStatus)
 }
 function deletefile(){

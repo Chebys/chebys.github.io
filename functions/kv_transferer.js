@@ -21,7 +21,9 @@ export async function onRequest(context){
 				await KV.delete(filename)
 				res='delete succeeded'
 			}else{
-				res=await KV.get(filename)
+				let dataurl=await KV.get(filename)
+				res=await fetch(dataurl)
+				//res=res.body
 			}
 		}else{
 			res='缺少filename'
