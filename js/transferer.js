@@ -60,22 +60,37 @@ function setProgress(loaded, total){
 	progress_sign.innerHTML=loaded
 	if(total)progress_sign.innerHTML += ' / '+total
 }
+function isOccupied(){
+	return status!=Status.done
+}
 
 //下面3个用作按钮监听
 function download(){ 
+	if(isOccupied()){
+		alert(status)
+		return
+	}
 	var fname=this.filename
 	setStatus('downloading', fname)
 	getFile(fname)
 		.then(blob=>downloadBlob(blob, fname))
-		.then(setStatus)
+		.then(()=>setStatus('done'))
 }
 function deletefile(){
+	if(isOccupied()){
+		alert(status)
+		return
+	}
 	setStatus('deleting', this.filename)
 	delFile(this.filename)
 		.then(console.log)
 		.then(refreshList)
 }
 function submit(){
+	if(isOccupied()){
+		alert(status)
+		return
+	}
 	var file = this.getFile()
 	if(file.size > 1024**2 * 20){
 		alert('文件不能超过20Mb')
@@ -139,6 +154,10 @@ refreshList()
 //container.append(newFileContainer())
 
 document.getElementById('upload').addEventListener('click', async ()=>{
+	if(isOccupied()){
+		alert(status)
+		return
+	}
 	let file = await FileInput()
 	let dataurl = await encode(file)
 	if(dataurl.length > 1024**2 * 20){
