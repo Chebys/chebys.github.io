@@ -23,7 +23,7 @@ export async function onRequest(context){
 			}else{
 				let dataurl=await KV.get(filename)
 				res=await fetch(dataurl)
-				//res=res.body
+				res=res.body
 			}
 		}else{
 			res='缺少filename'
