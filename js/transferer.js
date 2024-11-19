@@ -14,7 +14,7 @@ function onProgress({loaded, total}){
 	//console.log('progress:', loaded, '/', total) total总是0？
 	setProgress(loaded, total)
 }
-async function getList(){
+async function getList(){ //服务端有缓存
 	var res=await KV({mode:'getlist'})
 	res=JSON.parse(res) //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
 	//console.log(res)
@@ -77,6 +77,7 @@ function download(){
 		.then(()=>setStatus('done'))
 }
 function deletefile(){
+	if(!confirm('确定删除？'))return
 	if(isOccupied()){
 		alert(status)
 		return
@@ -86,27 +87,29 @@ function deletefile(){
 		.then(console.log)
 		.then(refreshList)
 }
-function submit(){
+async function upload(){
 	if(isOccupied()){
 		alert(status)
 		return
 	}
-	var file = this.getFile()
-	if(file.size > 1024**2 * 20){
+	let file = await FileInput()
+	let dataurl = await encode(file)
+	if(dataurl.length > 1024**2 * 20){
 		alert('文件不能超过20Mb')
 		return
 	}
 	setStatus('uploading')
-	encode(file)
-		.then(dataurl=>setFile(file.name, dataurl))
-		.then(console.log)
-		.then(refreshList)
+	await setFile(file.name, dataurl)
+	refreshList()
 }
 
 function fileContainer(filename){
 	var div=document.createElement('div')
-	div.innerHTML=filename
 	div.classList.add('file-container')
+	
+	var title=document.createElement('div')
+	title.innerHTML=filename
+	div.append(title)
 	
 	var dlbtn=document.createElement('button')
 	dlbtn.innerHTML='下载'
@@ -119,22 +122,6 @@ function fileContainer(filename){
 	delbtn.filename=filename
 	delbtn.addEventListener('click', deletefile)
 	div.append(delbtn)
-	return div
-}
-function newFileContainer(){ //暂弃
-	var div=document.createElement('div')
-	div.innerHTML='+'
-	div.classList.add('file-container')
-	
-	var input=document.createElement('input')
-	input.type='file'
-	div.append(input)
-	
-	var btn=document.createElement('button')
-	btn.innerHTML='上传'
-	btn.getFile = ()=>input.files[0]
-	btn.addEventListener('click', submit)
-	div.append(btn)
 	return div
 }
 
@@ -151,20 +138,5 @@ function refreshList(){
 }
 
 refreshList()
-//container.append(newFileContainer())
 
-document.getElementById('upload').addEventListener('click', async ()=>{
-	if(isOccupied()){
-		alert(status)
-		return
-	}
-	let file = await FileInput()
-	let dataurl = await encode(file)
-	if(dataurl.length > 1024**2 * 20){
-		alert('文件不能超过20Mb')
-		return
-	}
-	setStatus('uploading')
-	await setFile(file.name, dataurl)
-	refreshList()
-})
+document.getElementById('upload').addEventListener('click', upload)
