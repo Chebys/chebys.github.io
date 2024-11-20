@@ -1,3 +1,5 @@
+import {Buffer} from 'node:buffer'
+
 function encode(arrayBuffer){
 	var buf = Buffer.from(arrayBuffer)
 	return buf.toString('base64')
