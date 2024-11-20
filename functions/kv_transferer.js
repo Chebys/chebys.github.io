@@ -1,3 +1,12 @@
+function encode(arrayBuffer){
+	var buf = Buffer.from(arrayBuffer)
+	return buf.toString('base64')
+}
+function decode(str){ //返回arrayBuffer
+	var buf = Buffer.from(str, 'base64')
+	return buf.buffer
+}
+
 export async function onRequest(context){
 	const metakey='transferer'
 	const url=new URL(context.request.url);
@@ -9,21 +18,20 @@ export async function onRequest(context){
 	if(mode=='getlist'){
 		res=JSON.stringify(await KV.list())
 	}else if(mode=='test'){
-		res = new FileReader //后端没有这玩意
+		//
 	}else{
 		if(filename){
 			if(mode=='set'){
-				let value=await context.request.text();
-				res='set succeeded';
-				await KV.put(filename, value)
+				let arrayBuffer=await context.request.arrayBuffer()
+				res='set succeeded'
+				await KV.put(filename, encode(arrayBuffer))
 					.catch(err=>{res='failed'})
 			}else if(mode=='delete'){
 				await KV.delete(filename)
 				res='delete succeeded'
 			}else{
-				let dataurl=await KV.get(filename)
-				res=await fetch(dataurl)
-				res=res.body
+				let str=await KV.get(filename)
+				if(str!=null)res=decode(str)
 			}
 		}else{
 			res='缺少filename'

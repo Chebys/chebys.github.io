@@ -23,8 +23,8 @@ async function getList(){ //服务端有缓存
 function getFile(name){
 	return KV({filename:name, onProgress})
 }
-function setFile(name, str){
-	return KV({mode:'set', filename:name, body:str, onUploadProgress:onProgress})
+function setFile(name, blob){
+	return KV({mode:'set', filename:name, body:blob, onUploadProgress:onProgress})
 }
 function delFile(name){
 	return KV({mode:'delete', filename:name, onProgress})
@@ -93,13 +93,12 @@ async function upload(){
 		return
 	}
 	let file = await FileInput()
-	let dataurl = await encode(file)
-	if(dataurl.length > 1024**2 * 20){
+	if(file.size > 1024**2 * 20){
 		alert('文件不能超过20Mb')
 		return
 	}
 	setStatus('uploading')
-	await setFile(file.name, dataurl)
+	await setFile(file.name, file)
 	refreshList()
 }
 
