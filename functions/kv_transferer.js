@@ -41,7 +41,8 @@ export async function onRequest(context){
 	}
 
 	var response=new Response(res)
-	response.headers.set('Access-Control-Allow-Origin', '*');
-	response.headers.set('Cache-Control', 'no-store');
+	response.headers.set('Access-Control-Allow-Origin', '*')
+	response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+	response.headers.set('Cache-Control', 'no-store')
 	return response
 }
