@@ -42,7 +42,7 @@
   <div>non-h<span class="radio-set" data-name="h-nonh" data-value="," data-text="显示,隐藏"></span></div>
   <div>停更<span class="radio-set" data-name="h-pus" data-value="," data-text="显示,隐藏"></span></div>
   <div>已注销<span class="radio-set" data-name="h-dld" data-value="," data-text="显示,隐藏"></span></div>
-  <button id="sjbt">管理数据</button>
+  <button id="datamanager_btn">管理数据</button>
 </div>
 <div id="pn">
   <div id="pn1">
@@ -57,10 +57,13 @@
       <label for="s_skill"><div>技术💯</div><input id="s_skill" type="number" min="0" max="6"></label>
       <label for="s_style"><div>画风🎨</div><input id="s_style" type="number" min="0" max="6"></label>
     </div>
-    <div class="chk"><input type="checkbox" id="pus">停更</div>
-    <div class="chk"><input type="checkbox" id="dld">已注销</div>
-    <div>备注：<br/><textarea id="ps"></textarea></div>
-    <div class="bottom-bar">
+	<div class="flex-bar">
+      <label class="chk"><input type="checkbox" id="pus">停更</label>
+      <label class="chk"><input type="checkbox" id="dld">已注销</label>
+	</div>
+	<div id="link-ctn"></div>
+    <div id="ps-ctn"><textarea id="ps"></textarea><div id="ps-label">备注</div></div>
+    <div class="flex-bar">
 	  <button id="savbt">保存</button>
       <button id="dltbt">移除</button>
 	</div>
@@ -69,7 +72,7 @@
     <div id="search">
       全名搜索（无法搜索隐藏作者）
       <input id="search_q">
-      <div class="bottom-bar">
+      <div class="flex-bar">
 	    <button id="search_pre">上一个</button>
 		<button id="search_next">下一个</button>
 	  </div>
@@ -81,15 +84,8 @@
     </div>
   </div>
 </div>
-<div id="flt">保存成功 <img src="/icon/tick.svg" align="top"></div>
-
-<div id="wctr">
-  <div id="jsonw" onclick="event.stopPropagation()">
-    <div id="x">×</div>
-	<textarea id="jsont"></textarea>
-	<div class="bottom-bar"><button id="importbt">导入</button><button id="exportbt">导出</button></div>
-	<div class="bottom-bar"><button id="importimgbt">导入图片</button><button id="exportimgbt">导出图片</button></div>
-  </div>
-</div>
+<template id="template">
+  <div class="flt"><span></span> <img src="/icon/tick.svg" align="top"></div>
+</template>
 </body>
 </html>

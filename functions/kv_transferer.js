@@ -33,7 +33,7 @@ export async function onRequest(context){
 				res='delete succeeded'
 			}else{
 				let str=await KV.get(filename)
-				if(str!=null)res=decode(str)
+				if(str!=null)res=decode(str) //有问题
 			}
 		}else{
 			res='缺少filename'
