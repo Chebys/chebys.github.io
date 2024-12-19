@@ -22,8 +22,8 @@ const key = 'authorInfo',
 		urls: Object.create(null),
 		store: createStore('pid', 'pavatar'),
 		async loadAll(){
-			for(let [name, file] of await entries(this.store)){
-				this.images[name] = file;
+			for(let [name, buffer] of await entries(this.store)){
+				this.images[name] = new File([buffer], name);
 			}
 		},
 		get(name){ //返回ObjectURL或假值
@@ -35,15 +35,18 @@ const key = 'authorInfo',
 		async set(name, file){
 			if(name in this.images)throw '文件名冲突';
 			this.images[name] = file;
-			return idb_set(name, file, this.store)
+			return idb_set(name, file, this.store);
 		},
 		async del(name){
 			return idb_del(name, this.store);
 		},
-		import(blob){
-			unpack(blob)
-				.then(map=>setMany(Object.entries(map), this.store))
-				.then(()=>alert('导入完成，请刷新页面'), alert) //或许应该写成异步函数，由调用者来alert结果
+		async import(blob){
+			let map = await unpack(blob);
+			let entries = [];
+			for(let k in map){
+				entries.push([k, await map[k].arrayBuffer()]); //直接储存Blob可能报错，原因未知
+			}
+			await setMany(entries, this.store);
 		},
 		export(){
 			return packMap(this.images);
@@ -193,7 +196,7 @@ function listAuts(resort){ //根据 authorInfo 加载列表
 	if(resort)sort();
 	opt.innerHTML='';
 	for(let a=head; a; a=a[next])opt.appendChild(getr(a));
-	detl(current) || doDetl();//显示当前信息或“未选择”
+	detl(current) || doDetl(); //显示当前信息或“未选择”
 }
 function getr(a){//根据 authorInfo 生成 tr
 	let r=CE('tr'), d=[];
@@ -414,7 +417,9 @@ function manageData(){
 	imgData.innerHTML = '图片数据：'+sizetext(imgBlob.size, 'MB');
 	let importImgBtn = CE('button');
 	importImgBtn.innerHTML = '导入';
-	importImgBtn.onclick = ()=>FileInput('.bin').then(blob=>IDB.import(blob));
+	importImgBtn.onclick = ()=>FileInput('.bin')
+		.then(blob=>IDB.import(blob))
+		.then(()=>alert('导入完成，请刷新页面'), alert)
 	imgData.append(importImgBtn);
 	let exportImgBtn = CE('button');
 	exportImgBtn.innerHTML = '导出';
