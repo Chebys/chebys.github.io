@@ -19,6 +19,9 @@ function allEqual(arr1, arr2){
 	if(arr1.length != arr2.length)return false
 	return arr1.every((x, i) => x==arr2[i])
 }
+function bufferEqual(buf1, buf2){
+	return allEqual(new Uint8Array(buf1), new Uint8Array(buf2))
+}
 IDBStorage.checkVersion('test', 1, ['v1', 'v2'])
 var s1 = new IDBStorage('test', 'v1')
 var s2 = new IDBStorage('test', 'v2')
@@ -26,12 +29,11 @@ btn.onclick = async ()=>{
 	print('正在测试')
 	try{
 		let f = await fin()
-		let buffer = await f.arrayBuffer()
-		let arr = new Uint8Array(buffer)
-		await s1.set('test', arr)
-		let arr1 = await s1.get('test')
+		let buf = await f.arrayBuffer()
+		await s1.set('test', buf)
+		let buf1 = await s1.get('test')
 		//console.log(arr, arr2)
-		if(allEqual(arr, arr1))
+		if(bufferEqual(buf, buf1))
 			print('结果：正常')
 		else
 			print('错误：数据发生改变')
