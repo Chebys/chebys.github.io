@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>idb测试</title>
+<style>
+#opt{
+	height:400px;
+	width:800px;
+	border:1px solid black;
+}</style>
+<script type="module">
+import IDBStorage from '/js/modules/idb-storage.js'
+import fin from '/js/modules/offscreen-file-input.js'
+function print(msg){
+	opt.textContent = msg
+}
+function allEqual(arr1, arr2){
+	if(arr1.length != arr2.length)return false
+	return arr1.every((x, i) => x==arr2[i])
+}
+IDBStorage.checkVersion('test', 1, ['v1', 'v2'])
+var s1 = new IDBStorage('test', 'v1')
+var s2 = new IDBStorage('test', 'v2')
+btn.onclick = async ()=>{
+	print('正在测试')
+	try{
+		let f = await fin()
+		let buffer = await f.arrayBuffer()
+		let arr = new Uint8Array(buffer)
+		await s1.set('test', arr)
+		let arr1 = await s1.get('test')
+		//console.log(arr, arr2)
+		if(allEqual(arr, arr1))
+			print('结果：正常')
+		else
+			print('错误：数据发生改变')
+	}catch(e){
+		print(e)
+	}
+	
+}
+</script>
+</head>
+<body>
+<button id="btn">test</button>
+<div id="opt"></div>
+</body>
+</html>
