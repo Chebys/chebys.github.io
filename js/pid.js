@@ -1,4 +1,5 @@
-import {createStore, set as idb_set, del as idb_del, entries, setMany} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
+//import {createStore, set as idb_set, del as idb_del, entries, setMany} from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
+import IDBStorage from '/js/modules/idb-storage.js';
 //import LSProxy from '/js/modules/localStorageProxy.js';
 import FileInput from '/js/modules/offscreen-file-input.js';
 import {downloadBlob, downloadFile} from '/js/modules/downloadUtils.js';
@@ -20,9 +21,9 @@ const key = 'authorInfo',
 	IDB = { //图片数据库
 		images: Object.create(null),
 		urls: Object.create(null),
-		store: createStore('pid', 'pavatar'),
+		store: new IDBStorage('pid', 'pavatar'),
 		async loadAll(){
-			for(let [name, buffer] of await entries(this.store)){
+			for(let [name, buffer] of await this.store.entries()){
 				this.images[name] = new File([buffer], name);
 			}
 		},
@@ -35,10 +36,10 @@ const key = 'authorInfo',
 		async set(name, file){
 			if(name in this.images)throw '文件名冲突';
 			this.images[name] = file;
-			return idb_set(name, file, this.store);
+			return this.store.set(name, file);
 		},
 		async del(name){
-			return idb_del(name, this.store);
+			return this.store.del(name);
 		},
 		async import(blob){
 			let map = await unpack(blob);
@@ -46,7 +47,7 @@ const key = 'authorInfo',
 			for(let k in map){
 				entries.push([k, await map[k].arrayBuffer()]); //直接储存Blob可能报错，原因未知
 			}
-			await setMany(entries, this.store);
+			await this.store.setMany(entries);
 		},
 		export(){
 			return packMap(this.images);
@@ -446,7 +447,7 @@ function clickRemoveBt(e){
 sort.key = 'id';
 sort.asc = 1; //升序
 
-initData().then(()=>listAuts(1));
+initData().then(()=>listAuts(1), alert);
 
 const avt_ctn = GEBI('avt');
 avt_ctn.addEventListener('click', ()=>{
