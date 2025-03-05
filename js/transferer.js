@@ -29,13 +29,6 @@ function setFile(name, blob){
 function delFile(name){
 	return KV({mode:'delete', filename:name, onProgress})
 }
-function encode(file){
-	const reader = new FileReader
-	return new Promise(resolve=>{
-		reader.addEventListener('load', ()=>resolve(reader.result))
-		reader.readAsDataURL(file)
-	})
-}
 
 const Status = {
 	getting_list: '正在加载列表',
@@ -48,17 +41,17 @@ var status = null
 function setStatus(code, desc){
 	status=Status[code]
 	if(!status)throw {status, code, desc}
-	status_sign.innerHTML=status
-	if(desc)status_sign.innerHTML+=': '+desc
+	status_sign.textContent=status
+	if(desc)status_sign.textContent+=': '+desc
 	if(code=='done')setProgress()
 }
 function setProgress(loaded, total){
 	if(typeof loaded != 'number'){
-		progress_sign.innerHTML='无'
+		progress_sign.textContent = '无'
 		return
 	}
-	progress_sign.innerHTML=loaded
-	if(total)progress_sign.innerHTML += ' / '+total
+	progress_sign.textContent = loaded
+	if(total)progress_sign.textContent += ' / '+total
 }
 function isOccupied(){
 	return status!=Status.done
@@ -107,17 +100,17 @@ function fileContainer(filename){
 	div.classList.add('file-container')
 	
 	var title=document.createElement('div')
-	title.innerHTML=filename
+	title.textContent=filename
 	div.append(title)
 	
 	var dlbtn=document.createElement('button')
-	dlbtn.innerHTML='下载'
+	dlbtn.textContent='下载'
 	dlbtn.filename=filename
 	dlbtn.addEventListener('click', download)
 	div.append(dlbtn)
 	
 	var delbtn=document.createElement('button')
-	delbtn.innerHTML='删除'
+	delbtn.textContent='删除'
 	delbtn.filename=filename
 	delbtn.addEventListener('click', deletefile)
 	div.append(delbtn)
