@@ -20,7 +20,7 @@ export async function onRequest({env, request}){
 				await KV.delete(filename)
 				res = 'delete succeeded'
 			}else{
-				res = await KV.get(filename)
+				res = await KV.get(filename, 'stream')
 			}
 		}else{
 			res = '缺少filename'
