@@ -50,11 +50,20 @@ function setProgress(loaded, total){
 		progress_sign.textContent = '无'
 		return
 	}
-	progress_sign.textContent = loaded
-	if(total)progress_sign.textContent += ' / '+total
+	progress_sign.textContent = sizeText(loaded)
+	if(total)progress_sign.textContent += ' / '+sizeText(total)
 }
 function isOccupied(){
 	return status!=Status.done
+}
+function sizeText(size){
+	let unit = 'KB'
+	size /= 1024
+	if(size >= 1024){
+		unit = 'MB'
+		size /= 1024
+	}
+	return size.toFixed(2) + unit
 }
 
 //下面3个用作按钮监听
