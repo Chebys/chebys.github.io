@@ -7,7 +7,6 @@ import {packMap, unpack} from '/js/modules/filepackager.js';
 import Popup from '/js/modules/popup.js';
 import '/js/modules/radio-set.js';
 
-//todo: 数据管理，作者链接
 //id(get), n, a 头像格式(不含'.'), b 别名, t tag, nonh(get), s_porn, s_skill, s_style 评分, pus, dld, ps 备注, lk 链接（数组）
 //假值默认显示为空字符串。例外：评分
 
@@ -23,18 +22,23 @@ const key = 'authorInfo',
 		urls: Object.create(null),
 		store: new IDBStorage('pid', 'pavatar'),
 		async loadAll(){
+			opt.innerHTML = '正在加载图片';
 			for(let [name, buffer] of await this.store.entries()){
 				this.images[name] = new File([buffer], name);
 			}
+			opt.innerHTML = '图片加载完毕';
 		},
 		get(name){ //返回ObjectURL或假值
 			var img = this.images[name];
 			if(!img)return;
-			if(!this.urls[name])this.urls[name] = URL.createObjectURL(img);
+			this.urls[name] ||= URL.createObjectURL(img);
 			return this.urls[name];
 		},
-		async set(name, file){
+		async add(name, file){
 			if(name in this.images)throw '文件名冲突';
+			return this.set(name, file);
+		},
+		async set(name, file){
 			this.images[name] = file;
 			return this.store.set(name, file);
 		},
@@ -195,7 +199,7 @@ function sort(k){ //排序并生成链表
 }
 function listAuts(resort){ //根据 authorInfo 加载列表
 	if(resort)sort();
-	opt.innerHTML='';
+	opt.innerHTML = '';
 	for(let a=head; a; a=a[next])opt.appendChild(getr(a));
 	detl(current) || doDetl(); //显示当前信息或“未选择”
 }
@@ -209,7 +213,7 @@ function getr(a){//根据 authorInfo 生成 tr
 	
 	for(let j=0;j<6;j++)d[j]=CE('td');//pid，头像，昵称，tag，评分，操作
 	let lk=CE('a'), avt=CE('div'), star=CE('img'), b=CE('button');
-	lk.innerHTML=a.id;
+	lk.textContent=a.id;
 	lk.href='https://www.pixiv.net/users/'+a.id;
 	lk.target='_blank';
 	d[0].appendChild(lk);
@@ -219,13 +223,13 @@ function getr(a){//根据 authorInfo 生成 tr
 		d[1].appendChild(avt);
 	}
 	d[2].className='name';
-	if(a.n)d[2].innerHTML=a.n;
-	if(a.t)d[3].innerHTML=a.t;
+	if(a.n)d[2].textContent=a.n;
+	if(a.t)d[3].textContent=a.t;
 	if(a.s_porn){
 		star.src='/icon/star_'+a.s_porn+'.png';
 		d[4].appendChild(star);
 	}
-	b.innerHTML='移除';
+	b.textContent='移除';
 	b.addEventListener('click', clickRemoveBt);
 	d[5].appendChild(b);
 	for(let j=0;j<6;j++)r.appendChild(d[j]);
@@ -243,7 +247,7 @@ function detl(a){ //为current赋值，不保证a合法
 	return true;
 }
 function doDetl(a=default_aut){ //右侧详细信息
-	GEBI('pid').innerHTML=a.id;
+	GEBI('pid').textContent=a.id;
 	GEBI('avt').style.backgroundImage=a.imgUrl;
 	aut_links.replaceChildren(links_edit_btn);
 	for(let lk of a.lk||[]){
@@ -257,14 +261,18 @@ function Link(lk){
 	a.target = '_blank';
 	let plink = lk.match(/www\.pixiv\.net\/users\/([0-9]+)/);
 	if(plink){
-		let id = plink[1];
 		a.className = 'plink';
+		let id = plink[1];
 		/* if(authorInfo[id]){
 			a.href='#'+id; //todo: 被隐藏时？
 			a.target='_self';
 		} */
 	}else if(lk.match(/(twitter|x)\.com/)){
 		a.className = 'xlink';
+	}else if(lk.match(/fanbox\.cc/)){
+		a.className = 'fblink';
+	}else if(lk.match(/patreon\.com/)){
+		a.className = 'ptlink';
 	}
 	return a;
 }
@@ -360,7 +368,7 @@ function editLinks(){
 		
 		let delbtn = CE('button');
 		delbtn.className = 'link-delbtn';
-		delbtn.innerHTML = '-';
+		delbtn.textContent = '-';
 		delbtn.onclick = ()=>line.remove();
 		line.append(delbtn);
 		
@@ -372,7 +380,7 @@ function editLinks(){
 	win.content.append(inputs);
 	
 	let addbtn = CE('button');
-	addbtn.innerHTML = '+';
+	addbtn.textContent = '+';
 	addbtn.onclick = ()=>addLine();
 	win.content.append(addbtn);
 	
@@ -388,14 +396,14 @@ function editLinks(){
 }
 function manageData(){
 	let win = Popup({title:'管理数据'});
-	win.titleBar.className = 'window-title';
-	win.btnBar.className = 'flex-bar';
+	win.titleBar.classList.add('window-title');
+	win.btnBar.classList.add('flex-bar');
 	
 	let metaData = CE('div');
 	let metaFile = new File([json], 'authorInfo.json');
-	metaData.innerHTML = '基本数据：'+sizetext(metaFile.size, 'KB');
+	metaData.textContent = '基本数据：'+sizetext(metaFile.size, 'KB');
 	let importMetaBtn = CE('button');
-	importMetaBtn.innerHTML = '导入';
+	importMetaBtn.textContent = '导入';
 	importMetaBtn.onclick = ()=>FileInput('.json')
 		.then(f=>f.text())
 		.then(str=>{
@@ -408,22 +416,22 @@ function manageData(){
 		}, alert);
 	metaData.append(importMetaBtn);
 	let exportMetaBtn = CE('button');
-	exportMetaBtn.innerHTML = '导出';
+	exportMetaBtn.textContent = '导出';
 	exportMetaBtn.onclick = ()=>downloadFile(metaFile);
 	metaData.append(exportMetaBtn);
 	win.content.append(metaData);
 	
 	let imgData = CE('div');
 	let imgBlob = IDB.export();
-	imgData.innerHTML = '图片数据：'+sizetext(imgBlob.size, 'MB');
+	imgData.textContent = '图片数据：'+sizetext(imgBlob.size, 'MB');
 	let importImgBtn = CE('button');
-	importImgBtn.innerHTML = '导入';
+	importImgBtn.textContent = '导入';
 	importImgBtn.onclick = ()=>FileInput('.bin')
 		.then(blob=>IDB.import(blob))
 		.then(()=>alert('导入完成，请刷新页面'), alert)
 	imgData.append(importImgBtn);
 	let exportImgBtn = CE('button');
-	exportImgBtn.innerHTML = '导出';
+	exportImgBtn.textContent = '导出';
 	exportImgBtn.onclick = ()=>downloadBlob(imgBlob, 'pavatar.bin');
 	imgData.append(exportImgBtn);
 	win.content.append(imgData);

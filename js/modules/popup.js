@@ -7,7 +7,7 @@ function css(el, rules){
 	Object.assign(el.style, rules)
 }
 
-function Popup({height='400px', width='min(500px, 100%)', title='', text='', content}){
+function Popup({height='400px', width='min(500px, 100%)', title='', text='', content, btnBar=true, confirmText='确定', cancelText='取消'}){
 	let bg = addChild(document.body, 'div')
 	bg.className = 'popup-container'
 	css(bg, {
@@ -37,33 +37,38 @@ function Popup({height='400px', width='min(500px, 100%)', title='', text='', con
 	win.addEventListener('click', e=>e.stopPropagation())
 	
 	win.titleBar = addChild(win, 'div')
-	win.titleBar.innerHTML = title
+	win.titleBar.className = 'title'
+	win.titleBar.textContent = title
 	
 	if(content){
 		win.append(content)
 		win.content = content
 	}else{
 		win.content = addChild(win, 'div')
-		win.content.innerHTML = text
+		win.content.textContent = text
 	}
+	win.content.classList.add('content')
 	css(win.content, {
 		flex: 1,
 		overflowY: 'auto'
 	})
 	
-	win.btnBar = addChild(win, 'div')
-	
-	win.confirmBtn = addChild(win.btnBar, 'button')
-	win.confirmBtn.innerHTML = '确定'
-	
-	win.cancelBtn = addChild(win.btnBar, 'button')
-	win.cancelBtn.innerHTML = '取消'
-	
 	win.close = ()=>bg.remove()
-	win.confirm = awaitConfirm
 	bg.addEventListener('click', win.close)
-	win.confirmBtn.addEventListener('click', win.close)
-	win.cancelBtn.addEventListener('click', win.close)
+	
+	if(btnBar){
+		win.btnBar = addChild(win, 'div')
+		win.btnBar.className = 'btn-bar'
+		
+		win.confirmBtn = addChild(win.btnBar, 'button')
+		win.confirmBtn.textContent = confirmText
+		
+		win.cancelBtn = addChild(win.btnBar, 'button')
+		win.cancelBtn.textContent = cancelText
+		win.confirm = awaitConfirm
+		win.confirmBtn.addEventListener('click', win.close)
+		win.cancelBtn.addEventListener('click', win.close)
+	}
 	
 	return win
 }
