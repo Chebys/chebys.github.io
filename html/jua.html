@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Jua</title>
+<style>
+*{
+  box-sizing: border-box;
+}
+body{
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#topbar{
+  padding: 5px 10px;
+  border-bottom: 1px solid grey;
+  font-size: 20px;
+  font-weight: bold;
+}
+#main{
+  flex: 1;
+  display: flex;
+}
+#left,#right{
+  flex: 1;
+  height: 100%;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+#controller{
+  user-select: none;
+}
+#info{
+  color: #08f;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#ipt,#stdout,#stderr{
+	display: block;
+  flex: 1;
+	width: 100%;
+	border: 1px solid grey;
+  padding: 2px 5px;
+  overflow-y: auto;
+  font-size: 15px;
+  font-family: Consolas;
+  white-space: pre;
+  tab-size: 4;
+  resize: none;
+}
+#stdout{flex: 4;}
+</style>
+<script type="importmap">
+  {
+    "imports": {
+      "jua/value": "/js/jua/value.js",
+      "jua/builtin": "/js/jua/builtin.js",
+      "jua/operator": "/js/jua/operator.js",
+      "jua/program": "/js/jua/program.js",
+      "jua/parser": "/js/jua/parser.js",
+      "jua/process": "/js/jua/process.js",
+      "jua": "/js/jua/index.js"
+    }
+  }
+</script>
+<script src="/js/jua/main.js" type="module"></script>
+</head>
+<body>
+<div id="topbar">Jua Runtime Demo</div>
+<div id="main">
+  <div id="left">
+    <div id="controller">
+      <button id="runbtn">运行</button>
+      严格解析模式<input name="strict-parse" type="checkbox" checked />
+      调试模式<input name="debug" type="checkbox" />
+      <span id="info">说明</span>
+    </div>
+    <textarea id="ipt"></textarea>
+  </div>
+  <div id="right">
+    <div id="stdout-title">标准输出</div>
+    <div id="stdout"></div>
+    <div id="stderr-title">标准错误</div>
+    <div id="stderr"></div>
+  </div>
+</div>
+</body>
+</html>
