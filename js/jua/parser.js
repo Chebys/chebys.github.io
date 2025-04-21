@@ -1,8 +1,9 @@
 //解析时无需检查左/右值，构造语法树时会自动检查
+import {JuaSyntaxError} from 'jua/value';
 import {uniOperator, binOperator} from 'jua/operator';
 import {Declarable, UnitaryExpr, BinaryExpr, TernaryExpr, LiteralNum, LiteralStr, Keyword, Identifier, PropRef, MethWrapper, DeclarationItem, DeclarationList, Subscription, Call, TailedCall, ObjExpression, ArrayExpression, FunExpression, ExprStatement, Declaration, Return, Break, Continue, IfStatement, SwitchStatement, CaseBlock, WhileStatement, ForStatement, Block, FunctionBody} from 'jua/program';
 
-const symbols = new Set('()[]{}.,:;=+-*/<>!&|');
+const symbols = new Set('()[]{}.,:;=+-*/<>!&|?');
 
 const unitaryOperatorSymbols = new Set;
 for(let k in uniOperator)
@@ -15,7 +16,7 @@ const separators = new Set('()[]{}.,:;');
 const symbolsReg = /==|>=|<=|!=|\+=|-=|\*=|\/=|&&=?|\|\|=?|\.\.|./g;
 const validIdStartReg = /[_a-zA-Z]/;
 const validIdReg = /[_a-zA-Z0-9]/;
-const keywords = new Set(['as', 'by', 'false', 'for', 'fun', 'if', 'in', 'let', 'null', 'return', 'switch', 'true', 'void', 'while']);
+const keywords = new Set(['as', 'false', 'for', 'fun', 'if', 'in', 'let', 'local', 'null', 'return', 'switch', 'true', 'void', 'while']);
 
 function Reader(array){
 	var pos = 0;
@@ -40,8 +41,9 @@ function Reader(array){
 		}
 	}
 }
-function TokensReader(tokens){
+function TokensReader(tokens, {fileName}){
 	let reader = Reader(tokens);
+	reader.fileName = fileName;
 	reader.previewStr = function(){
 		return this.preview()?.str;
 	};
@@ -72,7 +74,8 @@ function tokenization(script){
 		end(){
 			if(!this.str)return;
 			if(this.type==1){ //截断符号串
-				tokens.push(...this.str.matchAll(symbolsReg).map(a => new Token(a[0], this.nline)));
+				for(let m of this.str.matchAll(symbolsReg))
+					tokens.push(new Token(m[0], this.nline));
 			}else if(this.type==5){
 				//忽略注释
 			}else{
@@ -82,7 +85,7 @@ function tokenization(script){
 		}
 	};
 	for(let i=0; i<len; i++){
-		let c=script[i];
+		let c = script[i];
 		if(c=='\n')buffer.nline++;
 		switch(buffer.type){
 			case 0:
@@ -99,8 +102,12 @@ function tokenization(script){
 					buffer.set(3, c);
 				}else if(c=="'"){
 					buffer.set(4, c);
+				}else if(c=='"'){
+					todo
+				}else if(c=='`'){
+					todo
 				}else{
-					throw 'Unrecognized: '+c;
+					throw new JuaSyntaxError('Unrecognized: '+c);
 				}
 				break;
 			case 1:
@@ -121,7 +128,7 @@ function tokenization(script){
 					buffer.end();
 					buffer.set(4, c);
 				}else{
-					throw 'Unrecognized: '+c;
+					throw new JuaSyntaxError('Unrecognized: '+c);
 				}
 				break;
 			case 2:
@@ -139,7 +146,7 @@ function tokenization(script){
 					buffer.end();
 					buffer.set(4, c);
 				}else{
-					throw 'Unrecognized: '+c;
+					throw new JuaSyntaxError('Unrecognized: '+c);
 				}
 				break;
 			case 3:
@@ -159,11 +166,11 @@ function tokenization(script){
 					}
 				}else if(c.match(/[a-zA-Z]/)){
 					//todo: 各种进制、科学计数法
-					throw '数字后不能接字母！';
+					throw new JuaSyntaxError('数字后不能接字母！');
 				}else if(c=="'"){
-					throw '数字后不能接引号！';
+					throw new JuaSyntaxError('数字后不能接引号！');
 				}else{
-					throw 'Unrecognized: '+c;
+					throw new JuaSyntaxError('Unrecognized: '+c);
 				}
 				break;
 			case 4:
@@ -202,10 +209,10 @@ class Token{
 		if(str[0]=="'") this.type='literal_str';
 		else if(str[0].match(/[0-9]/)) this.type='literal_num';
 		else if(separators.has(str)) this.type='separator';
-		else if(binaryOperatorSymbols.has(str)) this.type='2operator';
-		else if(unitaryOperatorSymbols.has(str)) this.type='1operator';
+		else if(binaryOperatorSymbols.has(str)) this.type='binop';
+		else if(unitaryOperatorSymbols.has(str)) this.type='uniop';
 		else if(str[0].match(validIdReg)) this.type='word';
-		else throw str;
+		else throw new JuaSyntaxError(str);
 	}
 	get isValidVarname(){
 		return this.type=='word' && !this.isKeyword;
@@ -215,9 +222,6 @@ class Token{
 	}
 }
 
-class SyntaxError extends Error{
-	//todo
-}
 function parseBlock(reader){
 	//输入不含'{'，会读完'}'
 	let stmts = parseStatements(reader, true);
@@ -229,10 +233,10 @@ function parseStatements(reader, block=false){
 	while(true){
 		let next = reader.preview();
 		if(!next){
-			if(block)throw `Missing '}'`;
+			if(block)throw new JuaSyntaxError(`Missing '}'`);
 			return stmts;
 		}else if(next.str=='}'){
-			if(!block)throw `Unexpected '}'`;
+			if(!block)throw new JuaSyntaxError(`Unexpected '}'`);
 			reader.next();
 			return stmts;
 		}
@@ -260,7 +264,7 @@ function parseStatement(reader){
 		switch(start.str){
 			case 'return':{
 				reader.next();
-				let expr = parseExpr(reader); //todo: 省略返回值
+				let expr = parseExpr(reader); //todo: 省略返回值；但会导致和后面的语句连起来？
 				skipSemicolon();
 				return new Return(expr.toRvalue());
 			}
@@ -281,7 +285,7 @@ function parseStatement(reader){
 			case 'fun':{
 				reader.next();
 				let name = reader.read();
-				if(!name?.isValidVarname)throw 'Missing function name'; //不能仅仅是表达式
+				if(!name?.isValidVarname)throw new JuaSyntaxError('Missing function name'); //不能仅仅是表达式
 				let func = parseFunc(reader);
 				let left = new Identifier(name.str);
 				let assignment = new DeclarationItem(left, func);
@@ -306,21 +310,21 @@ function parseStatement(reader){
 					let nextStr = reader.previewStr();
 					if(nextStr=='case'){
 						reader.next();
-						if(reader.readStr() != '(')throw "Missing '('";
+						if(reader.readStr() != '(')throw new JuaSyntaxError("Missing '('");
 						let exprs = parseClosedExprList(reader, ')');
 						if(exprs.length==0)
-							throw 'Missing caseExpression';
+							throw new JuaSyntaxError('Missing caseExpression');
 						let block = parseBlockOrStatement(reader);
 						caseBlocks.push(new CaseBlock(exprs.map(expr=>expr.toRvalue()), block));
 					}else if(nextStr=='else'){
 						if(caseBlocks.length==0)
-							throw 'switch without case';
+							throw new JuaSyntaxError('switch without case');
 						reader.next();
 						let elseBlock = parseBlockOrStatement(reader);
 						return SwitchStatement(expr, caseBlocks, elseBlock);
 					}else{
 						if(caseBlocks.length==0)
-							throw 'switch without case';
+							throw new JuaSyntaxError('switch without case');
 						return SwitchStatement(expr, caseBlocks);
 					}
 				}
@@ -333,14 +337,14 @@ function parseStatement(reader){
 			}
 			case 'for':{
 				reader.next();
-				if(reader.readStr() != '(')throw "Missing '('";
+				if(reader.readStr() != '(')throw new JuaSyntaxError("Missing '('");
 				let expr = parseExpr(reader);
-				if(reader.readStr() != ')')throw "Missing ')'";
+				if(reader.readStr() != ')')throw new JuaSyntaxError("Missing ')'");
 				if(!(expr instanceof BinaryExpr && expr.type == 'in'))
-					throw expr;
+					throw new JuaSyntaxError(expr);
 				let declarable = expr.left.toLvalue(), iterable = expr.right.toRvalue();
 				if(!(declarable instanceof Declarable))
-					throw declarable;
+					throw new JuaSyntaxError(declarable);
 				let block = parseBlockOrStatement(reader);
 				return new ForStatement(declarable, iterable, block);
 			}
@@ -361,7 +365,7 @@ function parseBlockOrStatement(reader){ //总是返回Block
 		return new Block([stmt]);
 	if(stmt===0)
 		return new Block([]);
-	throw 'Unfinished input';
+	throw new JuaSyntaxError('Unfinished input');
 }
 function parseExprList(reader){
 	//逗号分隔的表达式列表，不能为空
@@ -383,22 +387,26 @@ function parseClosedExprList(reader, endStr){
 	}
 	let exprs = parseExprList(reader);
 	if(reader.readStr() != endStr)
-		throw `Missing '${endStr}'`;
+		throw new JuaSyntaxError(`Missing '${endStr}'`);
 	return exprs;
 }
 function parseClosedExpr(reader){ //括号包围的右值，从'('开始读取
-	if(reader.readStr() != '(')throw "Missing '('";
+	if(reader.readStr() != '(')throw new JuaSyntaxError("Missing '('");
 	let expr = parseExpr(reader);
-	if(reader.readStr() != ')')throw "Missing ')'";
+	if(reader.readStr() != ')')throw new JuaSyntaxError("Missing ')'");
 	return expr.toRvalue();
 }
 function parseExpr(reader){ //广义表达式，需检查合法性
 	//由基本表达式和二元运算符构成
+	//产生的表达式及其子表达式均已 setSource
 	let primaries = [];
 	let operators = [];
+	let nline = reader.preview()?.nline;
 	while(true){
-		primaries.push(parsePrimary(reader));
-		if(reader.preview()?.type=='2operator')
+		let pri = parsePrimary(reader);
+		pri.setSource(reader.fileName, nline);
+		primaries.push(pri);
+		if(reader.preview()?.type=='binop')
 			operators.push(reader.read().str);
 		else
 			return CombineExpressions(primaries, operators);
@@ -406,7 +414,7 @@ function parseExpr(reader){ //广义表达式，需检查合法性
 }
 function parsePrimary(reader, opts={}){ //基本表达式，可以是一元运算符+基本表达式
 	let value = reader.read();
-	if(!value)throw 'Unfinished input';
+	if(!value)throw new JuaSyntaxError('Unfinished input');
 	let str = value.str;
 	switch(value.type){
 		case 'word':
@@ -424,9 +432,11 @@ function parsePrimary(reader, opts={}){ //基本表达式，可以是一元运�
 			}else if(str == 'if'){
 				let cond = parseClosedExpr(reader);
 				let expr = parseExpr(reader).toRvalue();
-				if(reader.readStr()!='else')throw "Missing 'else'";
+				if(reader.readStr()!='else')throw new JuaSyntaxError("Missing 'else'");
 				let elseExpr = parseExpr(reader).toRvalue();
 				return new TernaryExpr(cond, expr, elseExpr);
+			}else if(str == 'local'){
+				return parsePrimaryTail(Keyword.local, reader);
 			}
 			throw 'Unrecognized: '+str
 		case 'literal_num':
@@ -436,7 +446,7 @@ function parsePrimary(reader, opts={}){ //基本表达式，可以是一元运�
 		case 'separator':
 			if(str == '('){
 				let expr = parseExpr(reader);
-				if(reader.readStr() != ')') throw "Missing ')'";
+				if(reader.readStr() != ')') throw new JuaSyntaxError("Missing ')'");
 				return parsePrimaryTail(expr, reader);
 			}else if(str == '['){
 				let expr = parseArray(reader);
@@ -445,10 +455,10 @@ function parsePrimary(reader, opts={}){ //基本表达式，可以是一元运�
 				let expr = parseObj(reader);
 				return parsePrimaryTail(expr, reader);
 			}
-		case '1operator':
+		case 'uniop':
 			return new UnitaryExpr(str, parsePrimary(reader));
 		default:
-			throw 'Unrecognized: '+str;
+			throw new JuaSyntaxError('Unrecognized: '+str);
 	}
 	
 }
@@ -461,19 +471,19 @@ function parsePrimaryTail(head, reader){
 			if(value.str=='.'){ //属性引用
 				reader.next();
 				let id = reader.read();
-				if(id.type!='word')throw 'expect property name: '+id;
+				if(id.type!='word')throw new JuaSyntaxError('expect property name: '+id);
 				let expr = new PropRef(head, id.str);
 				return parsePrimaryTail(expr, reader);
 			}else if(value.str==':'){ //方法包装
 				reader.next();
 				let name = reader.read();
-				if(name.type!='word')throw 'expect property name: '+name;
+				if(name.type!='word')throw new JuaSyntaxError('expect property name: '+name);
 				let expr = new MethWrapper(head, name.str);
 				return parsePrimaryTail(expr, reader);
 			}else if(value.str=='['){
 				reader.next();
 				let key = parseExpr(reader);
-				if(reader.readStr() != ']')throw "Missing ']'";
+				if(reader.readStr() != ']')throw new JuaSyntaxError("Missing ']'");
 				let expr = new Subscription(head, key);
 				return parsePrimaryTail(expr, reader);
 			}else if(value.str=='('){
@@ -497,6 +507,16 @@ function parsePrimaryTail(head, reader){
 			return head;
 		case 'literal_str':
 			return new Call(head, [parseExpr(reader)]);
+		case 'uniop':
+			if(value.str=='?'){
+				reader.next();
+				return new UnitaryExpr('?', head);
+				head = head.toLvalue();
+				if(!(head instanceof Declarable))
+					throw new JuaSyntaxError('invalid item');
+				head.addDefault();
+				return new DeclarationItem(head, Keyword.null);
+			}
 		default:
 			return head;
 	}
@@ -516,7 +536,7 @@ function parseObj(reader){ //广义对象
 function parseFunc(reader){
 	//从'('开始读取
 	let bracket = reader.readStr();
-	if(bracket != '(') throw bracket;
+	if(bracket != '(') throw new JuaSyntaxError(bracket);
 	let exprs = parseClosedExprList(reader, ')');
 	let decList = DeclarationList.parse(exprs);
 	let nextStr = reader.readStr();
@@ -527,18 +547,20 @@ function parseFunc(reader){
 		let expr = parseExpr(reader);
 		stmts = [new Return(expr.toRvalue())];
 	}else{
-		throw nextStr;
+		throw new JuaSyntaxError(nextStr);
 	}
 	return new FunExpression(decList, stmts);
 }
 
 function CombineExpressions(exprs, operators){
 	//多个用二元运算符连接的表达式
+	//每个表达式均已 setSource
 	//operators为字符串数组
 	if(exprs.length==1) return exprs[0];
 	let priorPos = getPrior(operators);
 	let priorOper = operators.splice(priorPos, 1)[0];
 	let priorExpr = new BinaryExpr(priorOper, ...exprs.splice(priorPos, 2));
+	priorExpr.copySrc(priorExpr.left);
 	exprs.splice(priorPos, 0, priorExpr);
 	return CombineExpressions(exprs, operators);
 }
@@ -556,9 +578,9 @@ function getPrior(operators){
 	return idx;
 }
 
-export default function parse(script){
+export default function parse(script, {fileName}={}){
 	let tokens = tokenization(script);
-	let statements = parseStatements(TokensReader(tokens));
-	if(globalThis.DEBUG)console.log('statements', statements)
+	let statements = parseStatements(TokensReader(tokens, {fileName}));
+	if(globalThis.JUA_DEBUG)console.log('statements', statements)
 	return new FunctionBody(statements);
 }

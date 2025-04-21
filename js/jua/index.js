@@ -5,6 +5,8 @@ import JuaProcess from 'jua/process';
 
 const convertCache = new Map;
 function JSToJua(val){
+	//包装字符串时不会进行编码转换，直接将每个utf16码元视作一个字节
+	//包装函数时，会包装函数返回值，但不包装参数
 	if(convertCache.has(val))return convertCache.get(val);
 	let res = _JSToJua(val);
 	convertCache.set(val, res);
@@ -17,13 +19,13 @@ function _JSToJua(val){
 		case 'boolean': return val ? Jua_Bool.true : Jua_Bool.false;
 		case 'number': return new Jua_Num(val);
 		case 'string': return new Jua_Str(val);
-		case 'function': return new Jua_NativeFunc(val);
+		case 'function': return new Jua_NativeFunc((...args)=>JSToJua(val(...args)));
 		case 'object': {
 			let obj = new Jua_Obj;
 			assign(obj, val)
 			return obj;
 		}
-		throw 'Unconvertable type: ' + typeof val;
+		throw new TypeError('Unconvertable type: ' + typeof val);
 	}
 }
 function assign(juaObj, jsObj){

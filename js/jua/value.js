@@ -1,4 +1,5 @@
 class Jua_Val{
+	id = -1;
 	constructor(type, proto){
 		this.type = type; //'number', 'string', 'boolean', 'function', 'object'
 		this.proto = proto || null; //若为真，则必为 Jua_Obj
@@ -14,6 +15,9 @@ class Jua_Val{
 	}
 	getProp(key){ //返回jua值或null
 		return this.getOwn(key) || this.inheritProp(key);
+	}
+	setProp(key){
+		throw 'cannot setProp';
 	}
 	//基类调用元方法，内置元方法调用子类方法
 	isInst(klass){
@@ -33,7 +37,10 @@ class Jua_Val{
 		return meth instanceof Jua_Func ? meth : null;
 	}
 	hasItem(key){
-		todo
+		let hasFn = this.getMetaMethod('hasItem');
+		if(hasFn)
+			return hasFn.call([this, key]);
+		throw 'Unable to hasItem: '+this;
 	}
 	getItem(key){ //key为jua值；总是返回jua值
 		let getFn = this.getMetaMethod('getItem');
@@ -115,7 +122,7 @@ class Jua_Val{
 			throw 'Unable to be converted to string: '+this.type;
 		return null;
 	}
-	//以下返回js值
+	//以下返回js值且不报错
 	equalTo(val){
 		return this.eq(val).toBoolean();
 	}
@@ -127,6 +134,9 @@ class Jua_Val{
 	}
 	toInt(){
 		return 0;
+	}
+	toJSON(){
+		throw new JuaTypeError('not JSON serializable');
 	}
 }
 class Jua_Null extends Jua_Val{
@@ -140,6 +150,9 @@ class Jua_Null extends Jua_Val{
 		return false;
 	}
 	static inst = new this;
+	toJSON(){
+		return null;
+	}
 }
 class Jua_Obj extends Jua_Val{
 	static proto = new this;
@@ -161,13 +174,28 @@ class Jua_Obj extends Jua_Val{
 	setProp(key, val){ //val必须为jua值
 		this.dict[key] = val;
 	}
+	delProp(key){
+		delete this.dict[key];
+	}
+	hasItem(key){
+		let hasFn = this.getMetaMethod('hasItem');
+		if(hasFn)
+			return hasFn.call([this, key]);
+		if(key.type!='string')
+			throw 'Expect string as key for ordinary object';
+		return Jua_Bool[key.toString() in this.dict];
+	}
 	getItem(key){
 		let getFn = this.getMetaMethod('getItem');
 		if(getFn)
 			return getFn.call([this, key]);
-		if(key.type=='string')
-			return this.getProp(key.value);
-		throw 'key must be a string';
+		if(!(key.type=='string'))
+			throw new JuaTypeError('key must be a string');
+		let val = this.getProp(key.value);
+		console.log(val)
+		if(!val)
+			throw new JuaRefError(this+' has no property: '+key.value);
+		return val;
 	}
 	setItem(key, val){
 		let setFn = this.getMetaMethod('setItem');
@@ -176,7 +204,7 @@ class Jua_Obj extends Jua_Val{
 		if(key.type=='string')
 			this.setProp(key.value, val);
 		else
-			throw 'key must be a string';
+			throw new JuaTypeError('key must be a string');
 	}
 	[Symbol.iterator](){
 		let iterFn = this.getMetaMethod('iter'); // || Jua_Obj.proto.getOwn('iter') 不建议使用，性能较低
@@ -191,6 +219,14 @@ class Jua_Obj extends Jua_Val{
 	isPropTrue(key){ //仅自身属性
 		return this.getOwn(key) == Jua_Bool.true;
 	}
+	assignProps(obj){ //obj为Jua_Obj
+		for(let k in obj.dict)
+			this.dict[k] = obj.dict[k];
+	}
+	toJSON(){
+		//todo: 覆盖
+		return this.dict;
+	}
 }
 class Jua_Bool extends Jua_Val{
 	static proto = new Jua_Obj;
@@ -202,6 +238,9 @@ class Jua_Bool extends Jua_Val{
 		return String(this.value);
 	}
 	toBoolean(){
+		return this.value;
+	}
+	toJSON(){
 		return this.value;
 	}
 	static true = new this(true);
@@ -219,8 +258,6 @@ class Jua_Num extends Jua_Val{
 		return val instanceof Jua_Num && this.value == val.value ? Jua_Bool.true : Jua_Bool.false;
 	}
 	add(val){
-		if(val instanceof Jua_Str)
-			return val.add(this);
 		if(!(val instanceof Jua_Num))
 			throw val+' is not a number';
 		return new Jua_Num(this.value + val.value);
@@ -267,6 +304,9 @@ class Jua_Num extends Jua_Val{
 	toInt(){
 		return Math.round(this.value);
 	}
+	toJSON(){
+		return this.value;
+	}
 }
 class Jua_Str extends Jua_Val{
 	//严格按照规范的话，应当使用 Uint8Array
@@ -296,6 +336,8 @@ class Jua_Str extends Jua_Val{
 		return Jua_Null.inst;
 	}
 	add(val){
+		if(val.type!='string')
+			throw 'expect string';
 		return new Jua_Str(this.toString()+val.toString());
 	}
 	eq(val){
@@ -315,6 +357,9 @@ class Jua_Str extends Jua_Val{
 	toBoolean(){
 		return this.value=='' ? false : true;
 	}
+	toJSON(){
+		return this.value;
+	}
 }
 class Jua_Func extends Jua_Val{
 	static proto = new Jua_Obj;
@@ -323,6 +368,9 @@ class Jua_Func extends Jua_Val{
 	}
 	call(args=[]){ //总是返回jua值
 		throw 'pure virtual function';
+	}
+	toJSON(){
+		return undefined;
 	}
 }
 class Jua_NativeFunc extends Jua_Func{ //应处于全局环境
@@ -337,9 +385,10 @@ class Jua_NativeFunc extends Jua_Func{ //应处于全局环境
 }
 
 class Scope extends Jua_Obj{
-	constructor(parent){
+	constructor(parent, trace_stack){
 		super();
 		this.parent = parent || null; //若为真，则必为 Scope
+		this.trace_stack = trace_stack || parent.trace_stack; //必为真？
 	}
 	inheritProp(key){
 		return this.parent?.getProp(key);
@@ -351,6 +400,23 @@ class Scope extends Jua_Obj{
 				return;
 			}
 		throw 'Undeclared variable: '+name;
+	}
+	trackFunc(name){
+		//暂时无用
+	}
+	trackExpr(expr, unsafe_fn){
+		this.trace_stack.push(expr.src||new TrackInfo(expr));
+		let res;
+		try{
+			res = unsafe_fn();
+		}catch(err){
+			if(err instanceof JuaError)
+				err.track(this.trace_stack);
+			this.trace_stack.pop();
+			throw err;
+		}
+		this.trace_stack.pop();
+		return res;
 	}
 }
 class Jua_Array extends Jua_Obj{
@@ -375,6 +441,9 @@ class Jua_Array extends Jua_Obj{
 	setItem(key, val){ //不允许空槽，不改变长度
 		let i = this.correctIndex(key);
 		this.items[i] = val;
+	}
+	toJSON(){
+		return this.items;
 	}
 }
 class Jua_Buffer extends Jua_Obj{ //不推荐在js实现中使用，性能很低
@@ -423,7 +492,93 @@ class Jua_Buffer extends Jua_Obj{ //不推荐在js实现中使用，性能很低
 	}
 }
 
-class JuaIterator{ //非Jua_Val
+//以下非Jua_Val
+class TrackInfo{
+	constructor(expr, file='', n=''){
+		this.expr = expr;
+		this.name = expr.constructor.name;
+		this.fileName = String(file);
+		this.lineNumber = String(n);
+	}
+	toJuaObj(){
+		let obj = new Jua_Obj;
+		obj.setProp('fileName', this.fileName);
+		obj.setProp('lineNumber', this.lineNumber);
+		return obj;
+	}
+	toString(){
+		return `${this.name||'<unknown expression>'} (${this.fileName||'<unknown file>'}:${this.lineNumber||'<unknown line>'})`;
+	}
+}
+const errorProtos = {
+	Error: new Jua_Obj,
+};
+//jua产生的错误均应使用 JuaError 包装
+//特点：可以被try函数捕获
+class JuaError extends Error{
+	track(stack){
+		if(this.jua_stack)
+			return;
+		this.jua_stack = [...stack];
+		//console.log(this.jua_stack)
+	}
+	toDebugString(){
+		let str = this.toString();
+		if(this.jua_stack)
+			for(let i=this.jua_stack.length-1; i>=0; i--)
+				str += '\n\tat '+this.jua_stack[i];
+		return str;
+	}
+	toJuaObj(){
+		let jerr = new Jua_Obj(errorProtos.Error);
+		jerr.setProp('message', new Jua_Str(this.message));
+		if(this.jua_stack){
+			let arr = this.createJuaStack(this.jua_stack.length - this.stack_layer);
+			jerr.setProp('stack', arr);
+		}
+		return jerr;
+	}
+	createJuaStack(len){
+		len ??= this.jua_stack.length;
+		let items = [];
+		for(let i=0; i<len; i++){
+			let {fileName, lineNumber} = this.jua_stack[i], info = new Jua_Obj;
+			info.setProp('fileName', new Jua_Str(fileName));
+			info.setProp('lineNumber', new Jua_Str(lineNumber));
+			items.push(info);
+		}
+		return new Jua_Array(items);
+	}
+}
+JuaError.prototype.name = 'JuaError';
+class JuaSyntaxError extends JuaError{}
+class JuaErrorWrapper extends JuaError{ //通过 throw 函数抛出
+	constructor(jerr, option){
+		super('Client error', {cause:jerr});
+		this.stack_layer = option.stack||0; //开始追踪的层数，负数表示不追踪
+	}
+	toString(){
+		return this.toJuaObj().toString();
+	}
+	toJuaObj(){
+		let jerr = this.cause;
+		if(this.jua_stack && this.stack_layer>=0){
+			let arr = this.createJuaStack(this.jua_stack.length - this.stack_layer);
+			jerr.setProp('stack', arr);
+		}
+		return jerr;
+	}
+}
+class JuaRefError extends JuaError{
+	constructor(msg, option={}){
+		super(msg, option);
+		this.obj = option.obj;
+		this.prop = option.prop;
+	}
+}
+class JuaTypeError extends JuaError{}
+
+class JuaIterator{
 	//抽象类
 	next(){
 		//返回 { value: Jua_Val|null, done: Boolean }
@@ -437,10 +592,10 @@ class CustomIterator extends JuaIterator{
 		this.target = val;
 		this.iter = iterFn||val.getMetaMethod('iter');
 		if(!this.iter)
-			throw 'Uniterable: '+val;
+			throw new JuaTypeError('Uniterable: '+val);
 		this.key = Jua_Null.inst;
 	}
-	next(){
+	next(){ //不捕获错误，由调用者负责
 		let res = this.iter.call([this.target, this.key]);
 		let done = res.getOwn('done')||Jua_Null.inst;
 		if(done.toBoolean())
@@ -466,4 +621,8 @@ class ListIterator extends JuaIterator{
 	}
 }
 
-export {Scope, Jua_Val, Jua_Null, Jua_Num, Jua_Str, Jua_Bool, Jua_Obj, Jua_Func, Jua_NativeFunc, Jua_Array, Jua_Buffer};
+export {
+	Jua_Val, Jua_Null, Jua_Num, Jua_Str, Jua_Bool, Jua_Obj, Jua_Func, Jua_NativeFunc,
+	Scope, Jua_Array, Jua_Buffer,
+	TrackInfo, errorProtos, JuaError, JuaSyntaxError, JuaErrorWrapper, JuaRefError, JuaTypeError
+};

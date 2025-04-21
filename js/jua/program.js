@@ -1,35 +1,144 @@
 //根据DeepSeek的说法，这是"内聚式AST"或"自执行AST"
 //AST是静态的，所有节点均不应保存运行时的状态
-import {Scope, Jua_Val, Jua_Null, Jua_Num, Jua_Str, Jua_Bool, Jua_Obj, Jua_Func, Jua_NativeFunc, Jua_Array} from 'jua/value';
+import {
+	Scope, Jua_Val, Jua_Null, Jua_Num, Jua_Str, Jua_Bool, Jua_Obj, Jua_Func, Jua_NativeFunc, Jua_Array,
+	TrackInfo, JuaError, JuaSyntaxError, JuaRefError, JuaTypeError
+} from 'jua/value';
 import {uniOperator, binOperator} from 'jua/operator';
 
 function Get2Operator(type){
 	let oper = binOperator[type];
-	if(!oper)throw 'no operator: '+type;
+	if(!oper)throw new JuaSyntaxError('no operator: '+type);
 	return oper;
 }
 
-//构造表达式时不检查合法性（因为暂时不知道用来干什么）。构造语句时需要检查。
-//例外：TernaryExpr, DeclarationItem, DeclarationList, LeftObj, RightObj, FunExpression 有明确用途
+//表达式可以不合法（因为暂时不知道用来干什么）。构造语句时需要检查合法性。
+//必须合法的表达式：TernaryExpr, DeclarationItem, DeclarationList, LeftObj, RightObj, FunExpression 有明确用途
 //LiteralNum, LiteralStr, Keyword, Identifier 总是合法的，无需检查
+
+//todo: 错误捕获以表达式为单位（或某些语句）
+//primary setSource 时需要对子表达式进行 copySrc
+//toLvalue / toRvalue 建议返回this，否则 copySrc
+//捕获者不对错误进行二次包装，而是记录错误栈（或许应当从前往后而不是从后往前记录）
+//不捕获子表达式计算过程产生的错误，否则错误栈会十分冗长。仅捕获最终计算产生的错误
 class Expression{ //抽象类
+	setSource(file, n){
+		this.src = new TrackInfo(this, file, n);
+	}
+	copySrc(expr){
+		if(this.src)
+			return;
+		let {fileName, lineNumber} = expr.src;
+		this.setSource(fileName, lineNumber);
+	}
+	toString(){
+		return this.constructor.name;
+	}
 	toLvalue(){ //可assign
-		throw 'non-lvalue: '+this.constructor.name;
+		throw new JuaSyntaxError('non-lvalue: '+this.constructor.name, {cause:this});
 	}
 	toRvalue(){ //可calc
-		throw 'non-rvalue: '+this.constructor.name;
+		throw new JuaSyntaxError('non-rvalue: '+this.constructor.name, {cause:this});
 	}
-	calc(env){ //必须返回jua值
-		throw 'uncalculatable: '+this.constructor.name;
+	calc(env){ //返回jua值；需要追踪
+		throw new JuaSyntaxError('uncalculatable: '+this.constructor.name, {cause:this});
 	}
 	assign(env, val){ //val非空
-		throw 'unassignable: '+this.constructor.name;
+		throw new JuaSyntaxError('unassignable: '+this.constructor.name, {cause:this});
 	}
 }
 class Declarable extends Expression{
 	//抽象类，直接用于 DeclarationItem，间接用于变量声明、函数参数、左值数组、for循环；一定是左值
+	addDefault(){
+		//仅用于解构左值
+	}
 	declare(env, val){ //val非空
 		throw 'pure virtual function';
+	}
+}
+class DeclarationItem extends Expression{ //不是Declarable
+	static parse(expr){ //需确保已 setSource
+		let declarable, defval, auto_null=false;
+		if(expr instanceof BinaryExpr && expr.type == '='){
+			declarable = expr.left;
+			defval = expr.right.toRvalue()
+		}else if(expr instanceof UnitaryExpr && expr.type == '?'){
+			declarable = expr.expr;
+			auto_null = true;
+		}else{
+			declarable = expr;
+		}
+		declarable = declarable.toLvalue();
+		if(!(declarable instanceof Declarable))
+			throw new JuaSyntaxError(declarable);
+		let item = new DeclarationItem(declarable, defval);
+		item.copySrc(expr);
+		if(auto_null)item.addDefault();
+		return item;
+	}
+	constructor(declarable, defval=null){
+		super();
+		this.declarable = declarable;
+		this.defval = defval;
+	}
+	addDefault(){
+		this.defval ||= Keyword.null;
+		this.declarable.addDefault();
+	}
+	declare(env, arg){ //用于变量声明时，arg必空；其他情况arg可空。调用前检查默认值。
+		this.declarable.declare(env, arg||this.defval.calc(env));
+	}
+	assign(env, val){ //目前仅用于左值数组，val可空。调用前检查默认值。
+		this.declarable.assign(env, val||this.defval.calc(env));
+	}
+}
+class DeclarationList extends Declarable{ //todo: *args
+	//3种作用：变量声明、函数参数、左值数组
+	static parse(exprs){ //需确保已 setSource
+		return new DeclarationList(exprs.map(DeclarationItem.parse));
+	}
+	static fromNames(names){
+		return new DeclarationList(names.map(name=>{
+			let id = new Identifier(name);
+			return new DeclarationItem(id);
+		}));
+	}
+	constructor(decItems){
+		super();
+		this.decItems = decItems;
+		//this.restArgs = todo;
+	}
+	toVarDecList(){
+		for(let item of this.decItems)
+			item.defval ||= Keyword.null;
+		return this;
+	}
+	toLvalue(){ //仅用于左值数组
+		return this;
+	}
+	assign(env, list){ //仅用于左值数组，list非空
+		this.forEach(env, list[Symbol.iterator](), (item, val)=>item.assign(env, val));
+	}
+	declare(env, list){ //仅用于左值数组，list非空
+		this.forEach(env, list[Symbol.iterator](), (item, val)=>item.declare(env, val));
+	}
+	rawDeclare(env, args=[]){ //用于变量声明、函数参数
+		function tarckDeclare(decItem, val){
+			return env.trackExpr(decItem, ()=>{
+				if(val || decItem.defval)
+					decItem.declare(env, val);
+				else
+					throw new JuaTypeError('Missing argument: '+decItem.declarable, {cause:decItem});
+			});
+		}
+		this.forEach(env, args[Symbol.iterator](), tarckDeclare);
+	}
+	forEach(env, iterator, fn){ //iterator instanceof JuaIterator
+		//对每个DeclarationItem和取得的值调用 fn(item, val)
+		for(let item of this.decItems){
+			let {value, done} = iterator.next();
+			fn(item, done ? null : value);
+		}
 	}
 }
 class LiteralNum extends Expression{
@@ -70,22 +179,27 @@ class Keyword extends Expression{
 	toRvalue(){
 		return this;
 	}
-	calc(){
+	calc(env){
 		switch(this.str){
 			case 'true': return Jua_Bool.true;
 			case 'false': return Jua_Bool.false;
 			case 'null': return Jua_Null.inst;
-			default: throw this.str;
+			case 'local': return env;
+			default: throw new JuaSyntaxError(this.str);
 		}
 	}
 	static true = new this('true');
 	static false = new this('false');
 	static null = new this('null');
+	static local = new this('local');
 }
 class Identifier extends Declarable{
 	constructor(identifier){
 		super();
 		this.str = identifier;
+	}
+	toString(){
+		return `Identifier('${this.str}')`;
 	}
 	toRvalue(){
 		return this;
@@ -95,8 +209,14 @@ class Identifier extends Declarable{
 	}
 	calc(env){
 		let val = env.getProp(this.str);
-		if(val)return val;
-		throw `Variable '${this.str}' is not declared`;
+		return env.trackExpr(this, ()=>{
+			if(val)
+				return val;
+			throw new JuaRefError(`Variable '${this.str}' is not declared`, {
+				obj: env,
+				prop: this.str
+			});
+		});
 	}
 	assign(env, val){
 		env.assign(this.str, val);
@@ -105,22 +225,39 @@ class Identifier extends Declarable{
 		env.setProp(this.str, val)
 	}
 }
-class PropRef extends Expression{
+class OptionalPropRef extends Expression{
 	constructor(expr, prop){
 		//prop为js字符串
 		super();
 		this.expr = expr;
 		this.prop = prop;
 	}
-	toLvalue(){
-		return this.toRvalue();
+	setSource(...args){
+		super.setSource(...args);
+		this.expr.copySrc(this);
 	}
 	toRvalue(){
 		this.expr = this.expr.toRvalue();
 		return this;
 	}
+	_calc(env){
+		return this.expr.calc(env).getProp(this.prop);
+	}
 	calc(env){
-		return this.expr.calc(env).getProp(this.prop) || Jua_Null.inst;
+		return this._calc(env) || Jua_Null.inst;
+	}
+}
+class PropRef extends OptionalPropRef{
+	calc(env){
+		let val = this._calc(env);
+		return env.trackExpr(this, ()=>{
+			if(val)
+				return val;
+			throw new JuaRefError('no property: '+this.prop);
+		});
+	}
+	toLvalue(){
+		return this.toRvalue();
 	}
 	assign(env, val){
 		this.expr.calc(env).setProp(this.prop, val);
@@ -133,16 +270,20 @@ class MethWrapper extends Expression{
 		this.expr = expr;
 		this.method = method;
 	}
+	setSource(...args){
+		super.setSource(...args);
+		this.expr.copySrc(this);
+	}
 	toRvalue(){
 		this.expr = this.expr.toRvalue();
 		return this;
 	}
 	calc(env){
 		let obj = this.expr.calc(env);
-		return new Jua_NativeFunc((...args)=>{
-			let meth = obj.getProp(this.method);
-			if(!meth)throw 'missing method: '+this.method;
-			return meth.call([obj, ...args]);
+		let meth = obj.getProp(this.method);
+		return env.trackExpr(this, ()=>{
+			if(!meth)throw new JuaRefError('missing method: '+this.method);
+			return new Jua_NativeFunc((...args) => meth.call([obj, ...args]));
 		});
 	}
 }
@@ -152,14 +293,20 @@ class UnitaryExpr extends Expression{
 		this.type = type;
 		this.expr = expr;
 	}
+	setSource(...args){
+		super.setSource(...args);
+		this.expr.copySrc(this);
+	}
 	toRvalue(){
+		if(!uniOperator[this.type])throw new JuaSyntaxError('no operator: '+this.type);
 		this.expr = this.expr.toRvalue();
 		return this;
 	}
 	calc(env){
 		let operator = uniOperator[this.type];
-		if(!operator)throw 'no operator: '+this.type;
-		return operator(this.expr.calc(env));
+		if(!operator)throw new JuaSyntaxError('no operator: '+this.type);
+		let val = this.expr.calc(env);
+		return env.trackExpr(this, ()=>operator(val));
 	}
 }
 class BinaryExpr extends Expression{
@@ -168,10 +315,16 @@ class BinaryExpr extends Expression{
 		this.type = type;
 		this.left = left;
 		this.right = right;
+		//this.operator = Get2Operator(type)
+	}
+	setSource(...args){
+		super.setSource(...args);
+		this.left.copySrc(this);
+		this.right.copySrc(this);
 	}
 	toRvalue(){
 		if(this.type=='as')
-			throw 'Invalid operator: as';
+			throw new JuaSyntaxError('Invalid operator: as');
 		let lvalue = Get2Operator(this.type).lvalue;
 		this.left = lvalue ? this.left.toLvalue() : this.left.toRvalue();
 		this.right = this.right.toRvalue();
@@ -181,28 +334,39 @@ class BinaryExpr extends Expression{
 		switch(this.type){
 			case '=':{
 				let val = this.right.calc(env);
-				this.left.assign(env, val);
-				return val;
+				return env.trackExpr(this, ()=>{
+					this.left.assign(env, val);
+					return val;
+				});
 			}
 			case '+=': case '-=': case '*=': case '/=': case '&&=': case '||=':
 				return this.selfAssign(env, this.type.slice(0,-1));
 			default:{ //一般运算符
 				let operator = Get2Operator(this.type);
-				if(operator.circuited)
+				if(operator.circuited) //若子表达式无误，则短路运算无误，因此无需追踪
 					return operator.fn(env, this.left, this.right);
-				return operator.fn(this.left.calc(env), this.right.calc(env));
+				let lv = this.left.calc(env), rv = this.right.calc(env);
+				return env.trackExpr(this, ()=>operator.fn(lv, rv));
 			}
 		}
 	}
 	selfAssign(env, type){
 		let operator = Get2Operator(type);
 		let val;
-		if(operator.circuited)
+		if(operator.circuited){
 			val = operator.fn(env, this.left, this.right);
-		else
-			val = operator.fn(this.left.calc(env), this.right.calc(env));
-		this.left.assign(env, val);
-		return val;
+			return env.trackExpr(this, ()=>{
+				this.left.assign(env, val);
+				return val;
+			});
+		}else{
+			let lv = this.left.calc(env), rv = this.right.calc(env);
+			return env.trackExpr(this, ()=>{
+				val = operator.fn(lv, rv);
+				this.left.assign(env, val);
+				return val;
+			});
+		}
 	}
 }
 class Subscription extends BinaryExpr{
@@ -220,35 +384,12 @@ class Subscription extends BinaryExpr{
 	calc(env){
 		let obj = this.left.calc(env);
 		let key = this.right.calc(env);
-		return obj.getItem(key);
+		return env.trackExpr(this, ()=>obj.getItem(key));
 	}
 	assign(env, val){
 		let obj = this.left.calc(env);
 		let key = this.right.calc(env);
 		obj.setItem(key, val||Jua_Null.inst);
-	}
-}
-class DeclarationItem extends BinaryExpr{
-	static parse(expr){
-		if(expr instanceof Declarable){
-			return new DeclarationItem(expr);
-		}else if(expr instanceof BinaryExpr && expr.type == '='){
-			let declarable = expr.left.toLvalue();
-			if(!(declarable instanceof Declarable))
-				throw declarable;
-			return new DeclarationItem(declarable, expr.right.toRvalue());
-		}else{
-			throw expr;
-		}
-	}
-	constructor(declarable, defval=Keyword.null){
-		super('declaration', declarable, defval);
-	}
-	declare(env, arg){ //用于变量声明时，arg必空；其他情况arg可空
-		this.left.declare(env, arg||this.right.calc(env));
-	}
-	assign(env, val){ //仅用于左值数组，val可空
-		this.left.assign(env, val||this.right.calc(env));
 	}
 }
 class TernaryExpr extends Expression{ //if(cond) v1 else v2
@@ -257,6 +398,12 @@ class TernaryExpr extends Expression{ //if(cond) v1 else v2
 		this.cond = cond;
 		this.expr = expr;
 		this.elseExpr = elseExpr;
+	}
+	setSource(...args){
+		super.setSource(...args);
+		this.cond.copySrc(this);
+		this.expr.copySrc(this);
+		this.elseExpr.copySrc(this);
 	}
 	toRvalue(){
 		return this;
@@ -268,47 +415,20 @@ class TernaryExpr extends Expression{ //if(cond) v1 else v2
 			return this.elseExpr.calc(env);
 	}
 }
-class DeclarationList extends Declarable{
-	//3种作用：变量声明、函数参数、左值数组
-	static parse(exprs){
-		return new DeclarationList(exprs.map(DeclarationItem.parse));
-	}
-	static fromNames(names){
-		return new DeclarationList(names.map(name=>{
-			let id = new Identifier(name);
-			return new DeclarationItem(id);
-		}));
-	}
-	constructor(decItems){
-		super();
-		this.decItems = decItems;
-		//this.restArgs = todo;
-	}
-	toLvalue(){ //仅用于左值数组
-		return this;
-	}
-	assign(env, list){ //仅用于左值数组，list非空
-		this.forEach(env, list[Symbol.iterator](), (item, val)=>item.assign(env, val));
-	}
-	declare(env, list){ //仅用于左值数组，list非空
-		this.forEach(env, list[Symbol.iterator](), (item, val)=>item.declare(env, val));
-	}
-	rawDeclare(env, args=[]){ //用于变量声明、函数参数
-		this.forEach(env, args[Symbol.iterator](), (item, val)=>item.declare(env, val));
-	}
-	forEach(env, iterator, fn){ //iterator instanceof JuaIterator
-		//对每个DeclarationItem和取得的值调用 fn(item, val)
-		for(let item of this.decItems){
-			let {value, done} = iterator.next();
-			fn(item, done ? null : value);
-		}
-	}
+class FlexibleList extends Expression{
+	//todo
 }
 class Call extends Expression{
 	constructor(callee, args){
 		super();
 		this.callee = callee;
 		this.args = args;
+		//todo: starred
+	}
+	setSource(...args){
+		super.setSource(...args);
+		this.callee.copySrc(this);
+		//args 在 parseExpr 时已 setSource
 	}
 	toRvalue(){
 		this.callee = this.callee.toRvalue();
@@ -318,7 +438,7 @@ class Call extends Expression{
 	calc(env){
 		let fn = this.callee.calc(env);
 		let args = this.args.map(expr=>expr.calc(env));
-		return fn.call(args);
+		return env.trackExpr(this, ()=>fn.call(args));
 	}
 }
 class TailedCall extends Call{
@@ -345,32 +465,40 @@ class ObjExpression extends Expression{ //根据需要转换为 LeftObj/RightObj
 			return new LiteralStr(keyExpr.str);
 		if(keyExpr instanceof ArrayExpression && keyExpr.exprs.length==1)
 			return keyExpr.exprs[0].toRvalue();
-		throw keyExpr;
+		throw new JuaSyntaxError(keyExpr);
 	}
-	toLvalue(){
+	toLvalue(){ //需确保已 setSource
+		if(this.exprs.length==0)
+			throw new JuaSyntaxError();
 		let entries = [];
 		for(let expr of this.exprs){
-			let key, name, defval;
-			if(expr instanceof BinaryExpr && expr.type == '='){
-				defval = expr.right.toRvalue();
-				expr = expr.left;
-			}else{
-				defval = Keyword.null;
+			let key, decItem, auto_null=false;
+			if(expr instanceof UnitaryExpr && expr.type == '?'){
+				expr = expr.expr;
+				auto_null = true;
 			}
-			if(expr instanceof Identifier){
+			if(expr instanceof BinaryExpr){
+				if(expr.type == '='){
+					if(!(expr.left instanceof Identifier))
+						throw new JuaSyntaxError(expr.left);
+					key = new LiteralStr(expr.left.str);
+					decItem = new DeclarationItem(expr.left, expr.right.toRvalue());
+				}else if(expr.type == 'as'){
+					key = ObjExpression.parseKey(expr.left);
+					decItem = DeclarationItem.parse(expr.right);
+				}
+			}else if(expr instanceof Identifier){
 				key = new LiteralStr(expr.str);
-				name = expr.str;
-			}else if(expr instanceof BinaryExpr && expr.type == 'as'){
-				if(!(expr.right instanceof Identifier))
-					throw expr.right;
-				key = ObjExpression.parseKey(expr.left);
-				name = expr.right.str;
+				decItem = new DeclarationItem(expr);
 			}else{
-				throw expr;
+				throw new JuaSyntaxError('Invalid left property declaration', {cause:expr});
 			}
-			entries.push([key, name, defval]);
+			if(auto_null){
+				decItem.addDefault();
+			}
+			entries.push([key, decItem]);
 		}
-		return new LeftObj(entries);
+		return new LeftObj(entries, this);
 	}
 	toRvalue(){
 		let entries = [];
@@ -386,45 +514,57 @@ class ObjExpression extends Expression{ //根据需要转换为 LeftObj/RightObj
 				key = ObjExpression.parseKey(expr.callee);
 				val = expr.getFunExpr();
 			}else{
-				throw expr;
+				throw new JuaSyntaxError(expr);
 			}
 			entries.push([key, val]);
 		}
 		//delete this;
-		return new RightObj(entries);
+		return new RightObj(entries, this);
 	}
 }
 class LeftObj extends Declarable{ //注意：左值对象不能嵌套
-	constructor(entries){
+	auto_nulled = false;
+	constructor(entries, srcExpr){
 		super();
-		this.entries = entries; //每一项均为[key:右值, name:string, defval:右值]
-		//todo: 使用[右值, DeclarationItem]
+		this.entries = entries; //每一项均为[key:右值, DeclarationItem]
+		this.copySrc(srcExpr);
 	}
 	toLvalue(){
 		return this;
 	}
-	forEach(env, obj, fn){ //对每个变量名和取得的值调用 fn(name, val)
-		if(!(obj instanceof Jua_Obj))
-			throw obj;
-		for(let [keyExpr, name, defval] of this.entries){
+	addDefault(){
+		if(this.auto_nulled)
+			return;
+		todo
+		this.auto_nulled = true;
+	}
+	forEach(env, obj, fn){
+		//obj可以不是Jua_Obj
+		//对每个声明项和取得的目标属性调用 fn(decItem, val)
+		//若既没有目标属性也没有默认值则 JuaRefError
+		for(let [keyExpr, decItem] of this.entries){
 			let key = keyExpr.calc(env);
 			if(!(key instanceof Jua_Str))
-				throw 'non-string: '+key;
+				throw new JuaTypeError('non-string: '+key);
 			let val = obj.getProp(key.value);
-			fn(name, val||defval.calc(env));
+			if(val || decItem.defval)
+				fn(decItem, val);
+			else
+				throw new JuaRefError('cannot read property: '+key.value);
 		}
 	}
 	assign(env, obj){
-		this.forEach(env, obj, (name, val)=>env.assign(name, val));
+		this.forEach(env, obj, (item, val)=>item.assign(env, val));
 	}
 	declare(env, obj){
-		this.forEach(env, obj, (name, val)=>env.setProp(name, val));
+		this.forEach(env, obj, (item, val)=>item.declare(env, val));
 	}
 }
 class RightObj extends Expression{
-	constructor(entries){
+	constructor(entries, srcExpr){
 		super();
 		this.entries = entries; //每一项均为[key:右值, val:右值]
+		this.copySrc(srcExpr);
 	}
 	toRvalue(){
 		return this;
@@ -434,7 +574,9 @@ class RightObj extends Expression{
 		for(let kv of this.entries){
 			let [key, val] = kv.map(e=>e.calc(env));
 			if(!(key instanceof Jua_Str))
-				throw 'non-string: '+key;
+				env.trackExpr(this, ()=>{
+					throw new JuaTypeError('non-string: '+key);
+				});
 			obj.setProp(key.value, val);
 		}
 		return obj;
@@ -446,7 +588,10 @@ class ArrayExpression extends Expression{
 		this.exprs = exprs;
 	}
 	toLvalue(){
-		return new DeclarationList.parse(this.exprs);
+		//todo: *args
+		let larr = DeclarationList.parse(this.exprs);
+		larr.copySrc(this);
+		return larr;
 	}
 	toRvalue(){ //不需要新的类
 		this.exprs = this.exprs.map(expr=>expr.toRvalue());
@@ -473,7 +618,10 @@ class FunExpression extends Expression{
 }
 
 //构造含表达式语句时，应当使用表达式.toRvalue()/toLvalue()。构造函数本身不进行检查，而是由构造函数的调用者(parser)负责。
+//复合语句的构造函数需要检查 pending_continue, pending_break
 class Statement{
+	pending_continue = null;
+	pending_break = null;
 	constructor(type){
 		this.type = type; //或许不需要
 	}
@@ -491,9 +639,9 @@ class ExprStatement extends Statement{
 	}
 }
 class Declaration extends Statement{
-	constructor(list){
+	constructor(list){ //list为DeclarationList
 		super('let');
-		this.list = list; //DeclarationList
+		this.list = list.toVarDecList();
 	}
 	exec(env){
 		this.list.rawDeclare(env);
@@ -514,6 +662,7 @@ class Return extends Statement{
 class Break extends Statement{
 	constructor(){
 		super('break');
+		this.pending_break = this;
 	}
 	exec(_, controller){
 		controller.break();
@@ -522,6 +671,7 @@ class Break extends Statement{
 class Continue extends Statement{
 	constructor(){
 		super('continue');
+		this.pending_continue = this;
 	}
 	exec(_, controller){
 		controller.continue();
@@ -533,6 +683,8 @@ class IfStatement extends Statement{
 		this.cond = cond;
 		this.block = block;
 		this.elseBlock = elseBlock; //可空；else if... 等价于 else{ if... }
+		this.pending_continue = block.pending_continue || elseBlock?.pending_continue || null;
+		this.pending_break = block.pending_break || elseBlock?.pending_break || null;
 	}
 	exec(env, controller){
 		if(this.cond.calc(env).toBoolean())
@@ -546,6 +698,13 @@ class SwitchStatement extends Statement{
 		this.expr = expr;
 		this.caseBlocks = caseBlocks;
 		this.elseBlock = elseBlock; //可空
+		let blocks = caseBlocks.map(cb=>cb.block);
+		if(elseBlock)
+			blocks.push(elseBlock);
+		for(let block of blocks){
+			this.pending_continue ||= block.pending_continue;
+			this.pending_break ||= block.pending_break;
+		}
 	}
 	exec(env, controller){
 		let val = this.expr.calc(env);
@@ -596,9 +755,15 @@ class ForStatement extends Statement{
 	}
 	exec(env, controller){
 		let iterable = this.iterable.calc(env);
-		for(let val of iterable){
+		let iterator;
+		env.trackExpr(this.iterable, ()=>{
+			iterator = iterable[Symbol.iterator]();
+		});
+		while(true){
+			let {value, done} = env.trackExpr(this.iterable, ()=>iterator.next());
+			if(done)break;
 			let local = new Scope(env);
-			this.declarable.declare(local, val);
+			env.trackExpr(this.declarable, ()=>this.declarable.declare(local, value));
 			this.block.exec(local, controller);
 			controller.resolve('continue');
 			if('break' in controller.pending){
@@ -610,8 +775,14 @@ class ForStatement extends Statement{
 }
 
 class Block{
+	pending_continue = null;
+	pending_break = null;
 	constructor(statements){
 		this.statements = statements;
+		for(let stmt of statements){
+			this.pending_continue ||= stmt.pending_continue;
+			this.pending_break ||= stmt.pending_break;
+		}
 	}
 	exec(env, controller){ //env是新产生的作用域
 		for(let stmt of this.statements)
@@ -621,13 +792,20 @@ class Block{
 	}
 }
 class FunctionBody extends Block{
-	exec(env){ //总是返回jua值
+	constructor(statements){
+		super(statements);
+		let pending_expr = this.pending_continue || this.pending_brea;
+		if(pending_expr)
+			throw JuaSyntaxError('Invalid statement', {cause:pending_expr});
+	}
+	exec(env){
+		//返回jua值
 		let controller = new Controller;
 		super.exec(env, controller);
 		let res = controller.pending.return;
 		controller.resolve('return');
 		if(controller.isPending)
-			throw controller.pending;
+			throw new Error('怎么会？'); //应该在语法阶段检测
 		return res || Jua_Null.inst;
 	}
 }

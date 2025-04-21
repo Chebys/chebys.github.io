@@ -7,7 +7,8 @@ export const uniOperator = {
 		return Jua_Num.NaN; //todo: 重载
 	},
 	'!': val => val.toBoolean() ? Jua_Bool.false : Jua_Bool.true,
-	'*': () => { throw 'Dummy unitary operator: *'; }
+	'*': null, //Dummy
+	'?': null
 }
 export const binOperator = {
 	'^': {
@@ -101,7 +102,14 @@ export const binOperator = {
 		}
 	},
 	'&&': {
-		priority: 3
+		priority: 3,
+		circuited: true,
+		fn(env, e1, e2){
+			let v1 = e1.calc(env);
+			if(v1.toBoolean())
+				return e2.calc(env);
+			return v1;
+		}
 	},
 	'||': {
 		priority: 3,
@@ -170,6 +178,7 @@ export const binOperator = {
 	},
 	'as': {
 		priority: 0,
+		dummy: true,
 		fn(v1, v2){
 			throw 'Dummy binary operator: as';
 		}

@@ -14,14 +14,16 @@ body{
   flex-direction: column;
 }
 #topbar{
-  padding: 5px 10px;
-  border-bottom: 1px solid grey;
+  padding: 5px 15px;
+  border-bottom: 1px solid #ccc;
   font-size: 20px;
   font-weight: bold;
 }
 #main{
   flex: 1;
+  min-height: 0;
   display: flex;
+  background: #f6faff;
 }
 #left,#right{
   flex: 1;
@@ -42,9 +44,10 @@ body{
 	display: block;
   flex: 1;
 	width: 100%;
-	border: 1px solid grey;
+	border: 1px solid #ccc;
   padding: 2px 5px;
   overflow-y: auto;
+  background: white;
   font-size: 15px;
   font-family: Consolas;
   white-space: pre;
@@ -73,10 +76,20 @@ body{
 <div id="main">
   <div id="left">
     <div id="controller">
-      <button id="runbtn">运行</button>
+      <select id="presets">
+        <option value="">加载示例代码</option>
+        <option>basic</option>
+        <option>class</option>
+        <option>set</option>
+        <option>map</option>
+        <option>module</option>
+        <option>coding</option>
+        <option>typedarray</option>
+      </select>
       严格解析模式<input name="strict-parse" type="checkbox" checked />
       调试模式<input name="debug" type="checkbox" />
       <span id="info">说明</span>
+      <button id="runbtn">运行</button>
     </div>
     <textarea id="ipt"></textarea>
   </div>
