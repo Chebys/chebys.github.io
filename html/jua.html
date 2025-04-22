@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
 <title>Jua</title>
 <style>
 *{
@@ -27,7 +28,7 @@ body{
 }
 #left,#right{
   flex: 1;
-  height: 100%;
+  min-height: 0;
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -55,6 +56,11 @@ body{
   resize: none;
 }
 #stdout{flex: 4;}
+@media screen and (max-width: 800px) {
+  #main{
+    flex-direction: column;
+  }
+}
 </style>
 <script type="importmap">
   {
