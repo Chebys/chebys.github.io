@@ -100,3 +100,5 @@ presets.onchange = ()=>{
 	let value = presets.value
 	if(value)loadPreset(value)
 }
+ipt.value = '';
+ipt.disabled = false;
