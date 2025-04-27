@@ -3,10 +3,14 @@ import {
 	JuaTypeError
 } from 'jua/value';
 
+function initBuiltins(process){
+	todo
+}
+
 function _buildClass(proto, ctor){ //ctor为Jua_Func
 	let classProto = new Jua_Obj;
 	classProto.setProp('isClass', Jua_Bool.true);
-	classProto.setProp('call', ctor);
+	classProto.setProp('__call', ctor);
 	proto.proto = classProto;
 }
 function buildClass(proto, ctor){ //ctor为js函数，且不会接收第一个参数
@@ -96,7 +100,7 @@ Jua_Obj.proto.setProp('id', new Jua_NativeFunc(obj=>{
 
 buildClass(Jua_Num.proto, val=>{
 	if(val instanceof Jua_Num)return val;
-	if(val instanceof Jua_Str)return new Jua_Num(Number(val.str)); //todo: radix
+	if(val instanceof Jua_Str)return new Jua_Num(Number(val.str));
 	if(val==Jua_Null.inst || val==Jua_Bool.false)return new Jua_Num(0);
 	if(val==Jua_Bool.true)return new Jua_Num(1);
 	return Jua_Num.NaN;
@@ -152,6 +156,7 @@ function registerCoding(label){ // 8/16/32位整数，32/64位浮点数
 	}));
 }
 ['Uint8', 'Uint16', 'Uint32', 'Int8', 'Int16', 'Int32', 'Float32', 'Float64'].forEach(registerCoding);
+Jua_Num.proto.setProp('parse', ()=>todo);
 
 buildClass(Jua_Str.proto, val=>{
 	if(!val)
@@ -215,10 +220,10 @@ const errorProto = new Jua_Obj(classProto);
 function init_error(self, msg){
 	if(!(self instanceof Jua_Obj))
 		throw new JuaTypeError('Expect object');
-	if(msg)
-		msg = msg.toJuaString();
-	else
+	if(!msg)
 		msg = new Jua_Str;
+	else if(msg.type != 'string')
+		msg = new Jua_Str(msg.toString());
 	self.setProp('message', msg);
 	self.setProp('stack', Jua_Null.inst);
 }
@@ -233,8 +238,14 @@ errorProto.setProp('toString', new Jua_NativeFunc(err=>{
 	return new Jua_Str(msg ?  name+': '+msg : name);
 }));
 
-buildClass(Jua_Array.proto, (...items)=>new Jua_Array(items));
-Jua_Array.proto.setProp('join', new Jua_NativeFunc((jarr, sep=new Jua_Str(','))=>{ //只要求jarr可迭代
+buildClass(Jua_Array.proto, iterable=>{
+	let items = [];
+	for(let val of iterable)
+		items.push(val);
+	return new Jua_Array(items);
+});
+Jua_Array.proto.setProp('of', new Jua_NativeFunc((...items)=>new Jua_Array(items)));
+function jua_join(jarr, sep=new Jua_Str(', ')){ //只要求jarr可迭代
 	let start = true, str = '';
 	for(let item of jarr){
 		if(start)
@@ -244,10 +255,11 @@ Jua_Array.proto.setProp('join', new Jua_NativeFunc((jarr, sep=new Jua_Str(','))=
 		str += item.toString();
 	}
 	return new Jua_Str(str);
-}));
+}
+Jua_Array.proto.setProp('join', new Jua_NativeFunc(jua_join));
 Jua_Array.proto.setProp('toString', new Jua_NativeFunc(jarr=>{
-	let join = jarr.getProp('join');
-	return join?.call([jarr]) || Jua_Null.inst;
+	let jstr = jua_join(jarr);
+	return new Jua_Str(`[${jstr.value}]`);
 }));
 Jua_Array.proto.setProp('getItem', new Jua_NativeFunc((arr, i)=>{
 	if(!(arr instanceof Jua_Array))
@@ -281,7 +293,13 @@ Jua_Buffer.proto.setProp('write', new Jua_NativeFunc((self, str, pos)=>{
 		return self.write(str, pos);
 	throw new JuaTypeError('expect buffer');
 }));
+Jua_Buffer.proto.setProp('clear', new Jua_NativeFunc(self=>{
+	if(!(self instanceof Jua_Buffer))
+		throw new JuaTypeError('expect buffer');
+	self.bytes.fill(0);
+}));
 Jua_Buffer.proto.setProp('len', new Jua_NativeFunc(obj=>obj?.getProp('length')));
+
 
 let JuaJSON = new Jua_Obj;
 JuaJSON.setProp('encode', new Jua_NativeFunc(val=>{

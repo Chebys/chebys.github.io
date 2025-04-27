@@ -1,11 +1,11 @@
 let Set = class({
 	stringify(key){
-		let t = type(key)
-		let str
+		let t = type(key),
+			str =
 		if(t=='object' || t=='function')
-			str = Object.id(key):toString(16)
+			Object.id(key):toString(16)
 		else
-			str = String(key)
+			String(key)
 		return t+str
 	},
 	init(self, list){
@@ -65,5 +65,9 @@ let Set = class({
 		return '{'+Array.join(self, ', ')+'}'
 	}
 })
-print(Set([1,2,{},fun(){},'test',2,'test']))
+
+let set1 = Set([1,2,{},fun(){},'test',2,'test'])
+print(set1)
+let set2 = Set([1,2,{},'test'])
+print(set1-set2, set1+set2)
 return Set

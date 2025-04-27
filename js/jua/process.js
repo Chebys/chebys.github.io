@@ -11,7 +11,8 @@ class JuaProcess{ //目前，一次只能创建一个实例，否则内置值冲
 	constructor(main_name){
 		this.main = main_name; //模块名
 		this.initBuiltins();
-		this._G = this.makeGlobal();
+		this._G = new Scope(null, []);
+		this.makeGlobal(this._G);
 	}
 	run(){
 		//只能运行一次
@@ -34,7 +35,7 @@ class JuaProcess{ //目前，一次只能创建一个实例，否则内置值冲
 		let env = global ? this._G : new Scope(this._G)
 		return body.exec(env);
 	}
-	//private:
+	//protected:
 	initBuiltins(){
 		buildClass(Jua_Func.proto, (...args)=>{
 			let bodystr = args.pop();
@@ -69,8 +70,7 @@ class JuaProcess{ //目前，一次只能创建一个实例，否则内置值冲
 		}
 		this.modules['math'] = mathm;
 	}
-	makeGlobal(){ //虚函数
-		const env = new Scope(null, []);
+	makeGlobal(env){ //虚函数
 		//env.is_G = true;
 		const tryResProto = new Jua_Obj; //非类
 		tryResProto.setProp('catch', new Jua_NativeFunc((self, cb)=>{
@@ -156,7 +156,6 @@ class JuaProcess{ //目前，一次只能创建一个实例，否则内置值冲
 		};
 		for(let name in builtinObj)env.setProp(name, builtinObj[name]);
 		for(let name in builtinFunc)env.setProp(name, new Jua_NativeFunc(builtinFunc[name]));
-		return env;
 	}
 	findModule(name){ //纯虚函数；返回模块代码
 		throw 'pure virtual function';

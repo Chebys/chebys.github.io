@@ -33,8 +33,8 @@ class JuaVM extends JuaProcess{
 	constructor(){
 		super('main')
 	}
-	makeGlobal(){
-		let _G = super.makeGlobal()
+	makeGlobal(env){
+		super.makeGlobal(env);
 		let apiname = 'Jua Runtime 0.1'
 		let api = JSToJua({
 			name: apiname,
@@ -43,8 +43,7 @@ class JuaVM extends JuaProcess{
 		api.proto = JSToJua({
 			toString: ()=>apiname
 		})
-		_G.setProp('Runtime', api)
-		return _G
+		env.setProp('Runtime', api)
 	}
 	findModule(name){
 		if(name=='main'){
@@ -63,6 +62,7 @@ class JuaVM extends JuaProcess{
 	}
 }
 function display(displayer, ...args){
+	//console.log(args)
 	let str = args.join('\t')
 	if(STRICT_PARSE)
 		str = decodeU8(str)

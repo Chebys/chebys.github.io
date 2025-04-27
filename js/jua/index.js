@@ -25,8 +25,8 @@ function _JSToJua(val){
 			assign(obj, val)
 			return obj;
 		}
-		throw new TypeError('Unconvertable type: ' + typeof val);
 	}
+	throw new TypeError('Unconvertable type: ' + typeof val);
 }
 function assign(juaObj, jsObj){
 	for(let k in jsObj)

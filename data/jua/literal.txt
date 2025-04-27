@@ -1,3 +1,0 @@
-let a=1, b='jua', c={}
-print("a=$a, b=$b, c=$c, a+1=${a+1}")
-print(`abc\ndef`)

@@ -51,10 +51,11 @@ body{
   background: white;
   font-size: 15px;
   font-family: Consolas;
-  white-space: pre;
+  white-space: pre-wrap;
   tab-size: 4;
   resize: none;
 }
+#stdout{tab-size: 6;}
 #stdout{flex: 4;}
 @media screen and (max-width: 800px) {
   #main{
@@ -84,7 +85,12 @@ body{
     <div id="controller">
       <select id="presets">
         <option value="">加载示例代码</option>
-        <option>basic</option>
+        <option>literals</option>
+        <option>expressions</option>
+        <option>statements</option>
+        <option>scope</option>
+        <option>builtins</option>
+        <option>object</option>
         <option>class</option>
         <option>set</option>
         <option>map</option>

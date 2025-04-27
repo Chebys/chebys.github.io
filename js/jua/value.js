@@ -17,9 +17,8 @@ class Jua_Val{
 		return this.getOwn(key) || this.inheritProp(key);
 	}
 	setProp(key){
-		throw 'cannot setProp';
+		throw new JuaTypeError('cannot setProp: '+this.type);
 	}
-	//基类调用元方法，内置元方法调用子类方法
 	isInst(klass){
 		if(!this.proto)return false;
 		return this.proto == klass || this.proto.isSubclass(klass);
@@ -36,6 +35,7 @@ class Jua_Val{
 		let meth = this.proto.getProp(key);
 		return meth instanceof Jua_Func ? meth : null;
 	}
+	//基类调用元方法，内置元方法调用子类方法
 	hasItem(key){
 		let hasFn = this.getMetaMethod('hasItem');
 		if(hasFn)
@@ -55,7 +55,7 @@ class Jua_Val{
 		throw 'Unable to setItem: '+this;
 	}
 	call(args){
-		let callFn = this.getMetaMethod('call');
+		let callFn = this.getMetaMethod('__call');
 		if(callFn)
 			return callFn.call([this, ...args])
 		throw 'Unable to call '+this;
@@ -84,11 +84,8 @@ class Jua_Val{
 			return divFn.call([this, val]);
 		throw 'Unable to div '+this;
 	}
-	eq(val){
-		let eqFn = this.getMetaMethod('__eq');
-		if(eqFn)
-			return eqFn.call([this, val]);
-		return this == val ? Jua_Bool.true : Jua_Bool.false;
+	eq(val){ //保证成功；子类应当重写 equalTo
+		return this.equalTo(val) ? Jua_Bool.true : Jua_Bool.false;
 	}
 	lt(val){
 		let ltFn = this.getMetaMethod('__lt');
@@ -108,37 +105,30 @@ class Jua_Val{
 			return rangeFn.call([this, val]);
 		throw 'Unable to range';
 	}
-	[Symbol.iterator](){ //JuaIterator
+	[Symbol.iterator](){ //返回JuaIterator，可能报错
 		return new CustomIterator(this);
 	}
-	toJuaString(strict=true){
-		let toString = this.getMetaMethod('toString');
-		if(toString){
-			let res = toString.call([this]);
-			if(res instanceof Jua_Str)
-				return res;
-		}
-		if(strict)
-			throw 'Unable to be converted to string: '+this.type;
-		return null;
+	toJSON(){ //返回js值，可能报错
+		throw new JuaTypeError('not JSON serializable');
 	}
-	//以下返回js值且不报错
+	//以下返回js值且保证成功（除非执行元方法过程出错）
 	equalTo(val){
-		return this.eq(val).toBoolean();
+		let eqFn = this.getMetaMethod('__eq');
+		if(eqFn)
+			return eqFn.call([this, val]).toBoolean();
+		return this == val;
 	}
 	toString(){
-		return this.toJuaString(false)?.value ?? '#'+this.type;
+		throw new Error('pure virtual function');
 	}
 	toBoolean(){
 		return true;
 	}
-	toInt(){
+	toInt(){ //todo: 仅用于数字
 		return 0;
 	}
-	toJSON(){
-		throw new JuaTypeError('not JSON serializable');
-	}
 }
+
 class Jua_Null extends Jua_Val{
 	constructor(){ //私有构造函数
 		super('null');
@@ -165,9 +155,6 @@ class Jua_Obj extends Jua_Val{
 	hasOwn(key){ //返回js值
 		return key in this.dict;
 	}
-	hasProp(key){
-		return this.hasOwn(key) || this.proto?.hasProp(key);
-	}
 	getOwn(key){
 		return this.dict[key] || null;
 	}
@@ -183,7 +170,7 @@ class Jua_Obj extends Jua_Val{
 			return hasFn.call([this, key]);
 		if(key.type!='string')
 			throw 'Expect string as key for ordinary object';
-		return Jua_Bool[key.toString() in this.dict];
+		return this.getProp(key.toString()) ? Jua_Bool.true : Jua_Bool.false;
 	}
 	getItem(key){
 		let getFn = this.getMetaMethod('getItem');
@@ -192,7 +179,6 @@ class Jua_Obj extends Jua_Val{
 		if(!(key.type=='string'))
 			throw new JuaTypeError('key must be a string');
 		let val = this.getProp(key.value);
-		console.log(val)
 		if(!val)
 			throw new JuaRefError(this+' has no property: '+key.value);
 		return val;
@@ -223,8 +209,20 @@ class Jua_Obj extends Jua_Val{
 		for(let k in obj.dict)
 			this.dict[k] = obj.dict[k];
 	}
+	toString(){
+		let toString = this.getMetaMethod('toString');
+		if(toString){
+			let res = toString.call([this]);
+			if(res instanceof Jua_Str)
+				return res.value;
+		}
+		return `{${Object.keys(this.dict).join(', ')}}`;
+	}
 	toJSON(){
 		//todo: 覆盖
+		let toJSON = this.getMetaMethod('toJSON');
+		if(toJSON)
+			return toJSON.call([this]).toJSON();
 		return this.dict;
 	}
 }
@@ -253,9 +251,6 @@ class Jua_Num extends Jua_Val{
 	constructor(value=0){
 		super('number', Jua_Num.proto);
 		this.value=value;
-	}
-	eq(val){
-		return val instanceof Jua_Num && this.value == val.value ? Jua_Bool.true : Jua_Bool.false;
 	}
 	add(val){
 		if(!(val instanceof Jua_Num))
@@ -295,6 +290,9 @@ class Jua_Num extends Jua_Val{
 		iter.setProp('end', val);
 		return iter;
 	}
+	equalTo(val){
+		return val instanceof Jua_Num && this.value == val.value;
+	}
 	toString(){
 		return String(this.value);
 	}
@@ -327,11 +325,8 @@ class Jua_Str extends Jua_Val{
 			return Jua_Bool.false;
 		return Jua_Bool[this.value.includes(substr.value)];
 	}
-	_getItem(index){ //index为jua值；返回js字符或假值
-		return this.value.at(index.toInt());
-	}
 	getItem(index){
-		let c = this._getItem(index);
+		let c = this.value.at(index.toInt()); //todo: 限制范围
 		if(c)return new Jua_Str(c);
 		return Jua_Null.inst;
 	}
@@ -340,16 +335,13 @@ class Jua_Str extends Jua_Val{
 			throw 'expect string';
 		return new Jua_Str(this.toString()+val.toString());
 	}
-	eq(val){
-		return val instanceof Jua_Str && this.value == val.value ? Jua_Bool.true : Jua_Bool.false;
-	}
 	slice(start, end){
 		start = start ? this.correctIndex(start) : 0;
 		end = end && this.correctIndex(end) || this.value.length;
 		return new Jua_Str(this.value.slice(start, end));
 	}
-	toJuaString(){
-		return this;
+	equalTo(val){
+		return val instanceof Jua_Str && this.value == val.value;
 	}
 	toString(){
 		return this.value;
@@ -369,18 +361,11 @@ class Jua_Func extends Jua_Val{
 	call(args=[]){ //总是返回jua值
 		throw 'pure virtual function';
 	}
+	toString(){
+		return '<function>';
+	}
 	toJSON(){
 		return undefined;
-	}
-}
-class Jua_NativeFunc extends Jua_Func{ //应处于全局环境
-	constructor(native){
-		//native: (...Jua_Val) -> Jua_Val?
-		super();
-		this.native = native;
-	}
-	call(args=[]){
-		return this.native(...args) || Jua_Null.inst;
 	}
 }
 
@@ -419,6 +404,16 @@ class Scope extends Jua_Obj{
 		return res;
 	}
 }
+class Jua_NativeFunc extends Jua_Func{ //应处于全局环境
+	constructor(native){
+		//native: (...Jua_Val) -> Jua_Val?
+		super();
+		this.native = native;
+	}
+	call(args=[]){
+		return this.native(...args) || Jua_Null.inst;
+	}
+}
 class Jua_Array extends Jua_Obj{
 	static proto = new Jua_Obj;
 	constructor(items=[]){
@@ -434,6 +429,7 @@ class Jua_Array extends Jua_Obj{
 			i += this.items.length;
 		return i;
 	}
+	//todo: hasItem
 	getItem(key){
 		let i = this.correctIndex(key);
 		return this.items[i];
@@ -522,7 +518,7 @@ class JuaError extends Error{
 		this.jua_stack = [...stack];
 		//console.log(this.jua_stack)
 	}
-	toDebugString(){
+	toDebugString(){ //todo: 保证不报错（即使在toString元方法中）
 		let str = this.toString();
 		if(this.jua_stack)
 			for(let i=this.jua_stack.length-1; i>=0; i--)
@@ -551,7 +547,9 @@ class JuaError extends Error{
 	}
 }
 JuaError.prototype.name = 'JuaError';
-class JuaSyntaxError extends JuaError{}
+class JuaSyntaxError extends JuaError{
+	
+}
 class JuaErrorWrapper extends JuaError{ //通过 throw 函数抛出
 	constructor(jerr, option){
 		super('Client error', {cause:jerr});

@@ -6,9 +6,7 @@ export const uniOperator = {
 			return new Jua_Num(-val.value);
 		return Jua_Num.NaN; //todo: 重载
 	},
-	'!': val => val.toBoolean() ? Jua_Bool.false : Jua_Bool.true,
-	'*': null, //Dummy
-	'?': null
+	'!': val => val.toBoolean() ? Jua_Bool.false : Jua_Bool.true
 }
 export const binOperator = {
 	'^': {
@@ -120,67 +118,7 @@ export const binOperator = {
 			return e2.calc(env);
 		}
 	},
-	'=': {
-		priority: 1,
-		right: true, //右结合
-		lvalue: true, //需要左值
-		fn(){
-			throw '不应该在这里调用。';
-		}
-	},
-	'+=': {
-		priority: 1,
-		right: true,
-		lvalue: true,
-		fn(){
-			throw '不应该在这里调用。';
-		}
-	},
-	'-=': {
-		priority: 1,
-		right: true,
-		lvalue: true,
-		fn(){
-			throw '不应该在这里调用。';
-		}
-	},
-	'*=': {
-		priority: 1,
-		right: true,
-		lvalue: true,
-		fn(){
-			throw '不应该在这里调用。';
-		}
-	},
-	'/=': {
-		priority: 1,
-		right: true,
-		lvalue: true,
-		fn(){
-			throw '不应该在这里调用。';
-		}
-	},
-	'&&=': {
-		priority: 1,
-		right: true,
-		lvalue: true,
-		fn(){
-			throw '不应该在这里调用。';
-		}
-	},
-	'||=': {
-		priority: 1,
-		right: true,
-		lvalue: true,
-		fn(){
-			throw '不应该在这里调用。';
-		}
-	},
-	'as': {
-		priority: 0,
-		dummy: true,
-		fn(v1, v2){
-			throw 'Dummy binary operator: as';
-		}
-	}
 };
+for(let str in binOperator){
+	binOperator[str].str = str;
+}
