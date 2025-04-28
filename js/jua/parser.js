@@ -7,6 +7,14 @@ import {
 	ExprStatement, Declaration, Return, Break, Continue, IfStatement, SwitchStatement, CaseBlock, WhileStatement, ForStatement, Block, FunctionBody
 } from 'jua/program';
 
+//polyfill
+Set.prototype.union ||= function(set){
+	let newset = new Set(this);
+	for(let e of set)
+		newset.add(e);
+	return newset;
+}
+
 const sepchars = new Set('()[]{}.,:;?');
 const assignopers = new Set(['=', '+=', '-=', '*=', '/=', '&&=', '||='])
 const seprators = sepchars.union(assignopers);
@@ -160,7 +168,7 @@ class ScriptReader extends TokensReader{
 			throw new JuaSyntaxError('Unrecognized: '+c);
 		}
 	}
-	skipBlank(){ //跳过单个空白符。成功则返回true
+	skipWhite(){ //跳过单个空白符。成功则返回true
 		let c = this.script[this.pos];
 		if(!/\s/.test(c))
 			return false;
@@ -174,10 +182,10 @@ class ScriptReader extends TokensReader{
 		return true;
 	}
 	skipVoid(){ //跳过所有能跳过的东西
-		while(this.skipBlank());
+		while(this.skipWhite());
 		while(this.substr(2)=='//'){
 			this.readComment();
-			while(this.skipBlank());
+			while(this.skipWhite());
 		}
 	}
 	eof(){
