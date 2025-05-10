@@ -248,9 +248,11 @@ class MethWrapper extends Expression{
 		});
 	}
 }
-class Subscription extends BinaryExpr{ //LeftValue
+class Subscription extends Expression{ //LeftValue
 	constructor(expr, key){
-		super('subscript', expr, key);
+		super();
+		this.left = expr;
+		this.right = key;
 	}
 	calc(env){
 		let obj = this.left.calc(env);
