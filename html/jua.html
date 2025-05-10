@@ -15,10 +15,19 @@ body{
   flex-direction: column;
 }
 #topbar{
-  padding: 5px 15px;
+  height: 40px;
+  padding: 0 20px;
   border-bottom: 1px solid #ccc;
   font-size: 20px;
   font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#topbar a.github{
+  height: 80%;
+  aspect-ratio: 1;
+  background: url(/icon/github.svg) center/contain;
 }
 #main{
   flex: 1;
@@ -41,11 +50,13 @@ body{
   text-decoration: underline;
   cursor: pointer;
 }
-#inputbox,#stdout,#stderr{
-	display: block;
+#inputbox-ctn{
   flex: 1;
-	width: 100%;
-	border: 1px solid #ccc;
+}
+#inputbox,#stdout,#stderr{
+  display: block;
+  width: 100%;
+  border: 1px solid #ccc;
   padding: 2px 5px;
   overflow-y: auto;
   background: white;
@@ -55,8 +66,10 @@ body{
   tab-size: 4;
   resize: none;
 }
+#inputbox{height: 100%;}
 #stdout{tab-size: 6;}
 #stdout{flex: 4;}
+#stderr{flex: 1;}
 @media screen and (max-width: 800px) {
   #main{
     flex-direction: column;
@@ -79,7 +92,10 @@ body{
 <script src="/js/jua/main.js" type="module"></script>
 </head>
 <body>
-<div id="topbar">Jua Runtime Demo</div>
+<div id="topbar">
+  <span>Jua Runtime Demo</span>
+  <a class="github" href="https://github.com/Chebys/jua"></a>
+</div>
 <div id="main">
   <div id="left">
     <div id="controller">
@@ -98,12 +114,15 @@ body{
         <option>coding</option>
         <option>typedarray</option>
       </select>
-      严格解析模式<input name="strict-parse" type="checkbox" checked />
-      调试模式<input name="debug" type="checkbox" />
-      <span id="info">说明</span>
+      启用语法高亮<input name="syntax-highlight" type="checkbox" />
+      <!-- 严格解析模式<input name="strict-parse" type="checkbox" checked /> -->
+      <!-- 调试模式<input name="debug" type="checkbox" /> -->
+      <!-- <span id="info">说明</span> -->
       <button id="runbtn">运行</button>
     </div>
-    <textarea id="inputbox" disabled>请稍候……</textarea>
+    <div id="inputbox-ctn">
+      <textarea id="inputbox" disabled>请稍候……</textarea>
+    </div>
   </div>
   <div id="right">
     <div id="stdout-title">标准输出</div>

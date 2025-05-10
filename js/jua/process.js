@@ -164,6 +164,7 @@ class JuaProcess{ //目前，一次只能创建一个实例，否则内置值冲
 	stderr(err){} //虚函数，接收Jua错误（具体来说，是 JuaError.toJuaObj()）
 	require(name){
 		if(name in this.modules)return this.modules[name];
+		//todo: 检查循环导入
 		let script = this.findModule(name);
 		this.modules[name] = this.eval(script, {fileName:name});
 		return this.modules[name];

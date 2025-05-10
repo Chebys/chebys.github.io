@@ -1,14 +1,38 @@
 const presets_url = '/data/jua/'
 const jua_suffix = '.txt'
 const info_url = '/data/jua/info.txt'
+const ace_url = '/js/ace/ace.js'
+
+const inputbox = document.getElementById('inputbox');
+let editor = {
+	getValue(){
+		return inputbox.value;
+	},
+	setValue(v){
+		inputbox.value = v;
+	},
+	setReadOnly(v=true){
+		inputbox.disabled = v;
+	}
+};
+const _editor = editor;
 
 function disableInput(msg=''){
-	inputbox.value = '';
-	inputbox.disabled = true;
+	editor.setReadOnly();
+	editor.setValue(msg);
 }
 function enableInput(value=''){
-	inputbox.value = value;
-	inputbox.disabled = false;
+	editor.setValue(value, 1);
+	editor.setReadOnly(false);
+}
+
+function loadScript(src){
+	let el = document.createElement('script');
+	el.src = src;
+	document.head.append(el);
+	return new Promise(resolve=>{
+		el.onload = resolve;
+	});
 }
 
 import('jua').then(onLoad, enableInput)
@@ -17,8 +41,9 @@ function onLoad(Jua){
 
 const {JuaProcess, JSToJua} = Jua;
 
-const strict_parse_box = document.querySelector('[name=strict-parse][type=checkbox]')
-const debug_box = document.querySelector('[name=debug][type=checkbox]')
+const strict_parse_box = document.querySelector('[name=strict-parse][type=checkbox]') || {}
+const debug_box = document.querySelector('[name=debug][type=checkbox]') || {}
+const highlight_box = document.querySelector('[name=syntax-highlight][type=checkbox]') || {}
 //严格解析模式，参见 问题.txt
 //该模式下，display 可以正常输出，控制台输出非ascii字符则乱码
 globalThis.STRICT_PARSE = strict_parse_box.checked
@@ -26,6 +51,40 @@ globalThis.JUA_DEBUG = debug_box.checked
 
 strict_parse_box.onchange = ()=>{ STRICT_PARSE = strict_parse_box.checked }
 debug_box.onchange = ()=>{ JUA_DEBUG = debug_box.checked }
+
+let _value = ''
+highlight_box.onchange = ()=>{
+	_value = editor.getValue()
+	if(highlight_box.checked){
+		if(globalThis.ace){
+			enable_highlight();
+		}else{
+			disableInput('请稍后')
+			loadScript(ace_url).then(enableInput).then(enable_highlight)
+		}
+	}else{
+		disable_highlight()
+	}
+}
+const ctn = document.getElementById('inputbox-ctn')
+function enable_highlight(){
+	ctn.innerHTML = ''
+	editor = ace.edit(ctn, {
+		mode: "ace/mode/jua",
+		selectionStyle: "text"
+	})
+	editor.setOptions({
+		copyWithEmptySelection: true,
+		fontSize: '15px'
+	})
+	editor.setValue(_value, 1)
+}
+function disable_highlight(){
+	editor.destroy()
+	editor = _editor
+	ctn.replaceChildren(inputbox)
+	editor.setValue(_value)
+}
 
 //ascii字符保持不变
 function encodeU8(str){
@@ -60,7 +119,8 @@ class JuaVM extends JuaProcess{
 	}
 	findModule(name){
 		if(name=='main'){
-			return STRICT_PARSE ? encodeU8(inputbox.value) : inputbox.value
+			let value = editor.getValue()
+			return STRICT_PARSE ? encodeU8(value) : value
 		}
 		throw 'module not found'
 	}
@@ -99,7 +159,8 @@ async function loadPreset(name){
 	let res = await fetch(url)
 	enableInput(res.ok ? await res.text() : `代码加载失败：${res.status} ${res.statusText}`)
 }
-info.onclick = () => fetch(info_url)
+const info = document.getElementById('info')
+if(info)info.onclick = () => fetch(info_url)
 	.then(r=>r.text())
 	.then(alert);
 runbtn.onclick = run;
