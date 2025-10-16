@@ -246,6 +246,7 @@ buildClass(Jua_Array.proto, iterable=>{
 });
 Jua_Array.proto.setProp('of', new Jua_NativeFunc((...items)=>new Jua_Array(items)));
 function jua_join(jarr, sep=new Jua_Str(', ')){ //只要求jarr可迭代
+	//todo: 检测循环引用
 	let start = true, str = '';
 	for(let item of jarr){
 		if(start)

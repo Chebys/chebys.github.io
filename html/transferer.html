@@ -5,34 +5,337 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>文件中转站</title>
 <style>
-*{box-sizing:border-box;}
-body{margin:0;background:#def;}
-button{margin:2px;border:none;border-radius:4px;background:#4af;color:white;}
-button:active{background:#48e;}
-#container{height:100vh;width:90%;margin:auto;display:flex;padding:5px;}
-#panel,.file-container{background:white;box-shadow:0 0 5px rgba(100,140,140,0.3);border-radius:10px;padding:10px;margin:10px;}
-#panel{width:200px;}
-#status_sign{color:green;}
-#filelist{flex:1;overflow-y:auto;}
-.file-container{display:flex;}
-.file-container>div:first-child{flex:1;}
-.file-container button{padding:5px;}
-@media (max-width:768px){
-	#container{flex-direction:column;}
-	#panel{width:100%;}
-	#panel,.file-container{margin:10px 0;}
+:root {
+  --primary: #4361ee;
+  --primary-dark: #3a56d4;
+  --secondary: #7209b7;
+  --light: #f8f9fa;
+  --dark: #212529;
+  --success: #4cc9f0;
+  --danger: #f72585;
+  --warning: #f8961e;
+  --gray: #6c757d;
+  --gray-light: #e9ecef;
+  --border-radius: 12px;
+  --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --transition: all 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+  color: var(--dark);
+  line-height: 1.6;
+}
+
+#container {
+  height: 100vh;
+  width: 90%;
+  max-width: 1400px;
+  margin: auto;
+  display: flex;
+  padding: 20px 0;
+  gap: 20px;
+}
+
+#panel {
+  background: white;
+  box-shadow: var(--box-shadow);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: var(--transition);
+}
+
+#panel:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.panel-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.panel-header span {
+  font-size: 1.5rem;
+  color: var(--primary);
+}
+
+.status-container {
+  background: var(--gray-light);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-label {
+  font-weight: 500;
+  color: var(--gray);
+}
+
+.status-value {
+  font-weight: 600;
+}
+
+#status_sign {
+  color: var(--success);
+  font-weight: 700;
+}
+
+#progress_sign {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--gray-light);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+button:active {
+  transform: translateY(2px);
+}
+
+#upload {
+  background: var(--primary);
+  color: white;
+  margin-top: 10px;
+}
+
+#upload:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+}
+
+#filelist {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.file-container {
+  background: white;
+  box-shadow: var(--box-shadow);
+  border-radius: var(--border-radius);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  transition: var(--transition);
+  border-left: 4px solid var(--primary);
+}
+
+.file-container:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.file-container > div:first-child {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.file-icon {
+  font-size: 1.2rem;
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.file-actions button {
+  color: white;
+  padding: 5px 10px;
+}
+
+.btn-download {
+  background: var(--success);
+}
+
+.btn-download:hover {
+  background: #3ab0d9;
+  box-shadow: 0 4px 12px rgba(76, 201, 240, 0.3);
+}
+
+.btn-delete {
+  background: var(--danger);
+}
+
+.btn-delete:hover {
+  background: #e01a6f;
+  box-shadow: 0 4px 12px rgba(247, 37, 133, 0.3);
+}
+
+.warning-text {
+  font-size: 0.85rem;
+  color: var(--warning);
+  text-align: center;
+  margin-top: 10px;
+  font-style: italic;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--gray);
+}
+
+.empty-state span {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  color: var(--gray-light);
+}
+
+.empty-state h3 {
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+  color: var(--gray);
+}
+
+.empty-state p {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  #container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  #panel {
+    width: 100%;
+  }
+  
+  .file-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .file-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gray-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
 }
 </style>
-<script src="/js/transferer.js" type="module"></script>
 </head>
 <body>
 <div id="container">
   <div id="panel">
-    <div>*列表更新可能有延迟*</div>
-    <div>当前状态：<span id="status_sign">？？？</span></div>
-    <div>当前进度：<span id="progress_sign">无</span></div>
-	<button id="upload">上传新文件</button>
+    <div class="panel-header">
+      <span>📁</span>
+      <h2>文件中转站</h2>
+    </div>
+    
+    <div class="status-container">
+      <div class="status-item">
+        <span class="status-label">当前状态：</span>
+        <span class="status-value" id="status_sign">？？？</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">当前进度：</span>
+        <span class="status-value" id="progress_sign">无任务</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress_bar"></div>
+      </div>
+    </div>
+    
+    <button id="upload">
+      <span>📤</span> 上传新文件
+    </button>
+    
+    <div class="warning-text">*列表更新可能有延迟*</div>
   </div>
+  
   <div id="filelist"></div>
 </div>
 </body>

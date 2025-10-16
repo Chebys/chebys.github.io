@@ -39,10 +39,10 @@ const Status = {
 }
 var status = null
 function setStatus(code, desc){
-	status=Status[code]
+	status = Status[code]
 	if(!status)throw {status, code, desc}
-	status_sign.textContent=status
-	if(desc)status_sign.textContent+=': '+desc
+	status_sign.textContent = status
+	if(desc)status_sign.textContent += ': '+desc
 	if(code=='done')setProgress()
 }
 function setProgress(loaded, total){
@@ -51,7 +51,10 @@ function setProgress(loaded, total){
 		return
 	}
 	progress_sign.textContent = sizeText(loaded)
-	if(total)progress_sign.textContent += ' / '+sizeText(total)
+	if(total){
+		progress_sign.textContent += ' / '+sizeText(total)
+		progress_bar.style.width = loaded/total + '%'
+	}
 }
 function isOccupied(){
 	return status!=Status.done
@@ -66,29 +69,98 @@ function sizeText(size){
 	return size.toFixed(2) + unit
 }
 
-//下面3个用作按钮监听
-function download(){ 
-	if(isOccupied()){
-		alert(status)
+function $n(tag, data={}){
+	let el = document.createElement(tag)
+	for(let k in data){
+		let v = data[k]
+		if(k=='content'){
+			if(typeof v=='string')
+				el.textContent = v
+			else if(v instanceof Array)
+				el.append(...v)
+			else
+				throw new TypeError('invalid content', {cause:v})
+		}else if(k=='style' && typeof v=='object'){
+			Object.assign(el.style, v)
+		}else if(k=='data' && typeof v=='object'){
+			Object.assign(el.dataset, v)
+		}else if(k=='init' && typeof v=='function'){
+			v.call(el, data)
+		}else{
+			el[k] = v
+		}
+	}
+	return el
+}
+function fileContainer(filename){
+	return $n('div', {
+		className: 'file-container',
+		content: [
+			$n('div', { content: [
+				$n('div', {
+					className: 'file-icon',
+					content: '📄'
+				}),
+				$n('div', {
+					className: 'file-name',
+					content: filename
+				}),
+			]}),
+			$n('div', { className: 'file-actions', content: [
+				$n('button', {
+					className: 'btn-download',
+					content: '下载',
+					onclick(){
+						if(isOccupied()){
+							alert(status)
+							return
+						}
+						setStatus('downloading', filename)
+						getFile(filename)
+							.then(blob=>downloadBlob(blob, filename))
+							.then(()=>setStatus('done'))
+					}
+				}),
+				$n('button', {
+					className: 'btn-delete',
+					content: '删除',
+					onclick(){
+						if(isOccupied()){
+							alert(status)
+							return
+						}
+						if(!confirm('确定删除？'))return
+						setStatus('deleting', filename)
+						delFile(filename)
+							.then(console.log)
+							.then(refreshList)
+					}
+				})
+			]})
+		]
+	})
+}
+
+function refresh(list){
+	filelist.replaceChildren()
+	if(!list.length){
+		filelist.append($n('div', { className: 'empty-state', content: [
+			$n('span', {content: '📁'}),
+			$n('h3', {content: '暂无文件'}),
+			$n('p', {content: '上传您的第一个文件开始使用文件中转站'})
+		]}))
 		return
 	}
-	var fname=this.filename
-	setStatus('downloading', fname)
-	getFile(fname)
-		.then(blob=>downloadBlob(blob, fname))
-		.then(()=>setStatus('done'))
-}
-function deletefile(){
-	if(!confirm('确定删除？'))return
-	if(isOccupied()){
-		alert(status)
-		return
+	for(let fname of list){
+		filelist.append(fileContainer(fname))
 	}
-	setStatus('deleting', this.filename)
-	delFile(this.filename)
-		.then(console.log)
-		.then(refreshList)
+	setStatus('done')
 }
+function refreshList(){
+	setStatus('getting_list')
+	return getList().then(refresh)
+}
+
 async function upload(){
 	if(isOccupied()){
 		alert(status)
@@ -102,40 +174,6 @@ async function upload(){
 	setStatus('uploading')
 	await setFile(file.name, file)
 	refreshList()
-}
-
-function fileContainer(filename){
-	var div=document.createElement('div')
-	div.classList.add('file-container')
-	
-	var title=document.createElement('div')
-	title.textContent=filename
-	div.append(title)
-	
-	var dlbtn=document.createElement('button')
-	dlbtn.textContent='下载'
-	dlbtn.filename=filename
-	dlbtn.addEventListener('click', download)
-	div.append(dlbtn)
-	
-	var delbtn=document.createElement('button')
-	delbtn.textContent='删除'
-	delbtn.filename=filename
-	delbtn.addEventListener('click', deletefile)
-	div.append(delbtn)
-	return div
-}
-
-function refresh(list){
-	filelist.replaceChildren()
-	for(let fname of list){
-		filelist.append(fileContainer(fname))
-	}
-	setStatus('done')
-}
-function refreshList(){
-	setStatus('getting_list')
-	return getList().then(refresh)
 }
 
 refreshList()
