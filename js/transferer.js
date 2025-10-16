@@ -53,7 +53,7 @@ function setProgress(loaded, total){
 	progress_sign.textContent = sizeText(loaded)
 	if(total){
 		progress_sign.textContent += ' / '+sizeText(total)
-		progress_bar.style.width = loaded/total + '%'
+		progress_bar.style.width = loaded/total*100 + '%'
 	}
 }
 function isOccupied(){
