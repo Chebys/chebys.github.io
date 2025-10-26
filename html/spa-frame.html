@@ -197,7 +197,7 @@ async function PackageManager(dbName){
 }
 var pkgmanager
 
-const VERSION_TAG = '0.2'
+const VERSION_TAG = '0.3'
 const API_VERSION = 0
 function isCompatible(ver){
 	return ver == API_VERSION
@@ -225,6 +225,10 @@ async function loadApp(file, addPackage){
 	try{
 		let {meta, blob} = await split(file)
 		let {_ver=0, id, name, icon, files, author, desc, main, require_path} = meta
+		if(!id)
+			throw new Error('缺少 ID')
+		if(!id.match(/^[a-z0-9-]+$/))
+			throw new Error('ID 不合法')
 		if(!isCompatible(_ver))
 			throw new Error('版本不兼容')
 		let assets = Object.create(null), scripts = Object.create(null)
@@ -258,7 +262,11 @@ async function loadApp(file, addPackage){
 }
 function runApp(app){
 	document.head.innerHTML = ''
-	//todo: 设置图标、标题
+	document.head.append($n('title', {content:app.name}))
+	if(app.icon){
+		document.head.append(iconLink)
+		iconLink.href = app.icon
+	}
 	document.body.innerHTML = ''
 	document.body.style = ''
 	document.adoptedStyleSheets = []
@@ -304,7 +312,8 @@ function runApp(app){
 	try{
 		runModule(app.main)
 	}catch(err){
-		alert('启动失败')
+		if(!globalThis.DEBUGGING)
+			alert('启动失败')
 		throw err //console.error 无法定位 VM 源码
 	}
 }
@@ -352,7 +361,7 @@ function $n(tag, data={}){
 
 var pkglist
 var detailPanel  // will hold right-side details panel element
-let iconLink = $n('link', {rel:'shortcut icon'})
+let iconLink = $n('link', {rel:'icon'})
 var defaultIcon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="48" height="48"><rect x="4" y="4" width="26" height="26" rx="4" fill="#4ae" /><rect x="4" y="34" width="26" height="26" rx="4" fill="#4ae" /><rect x="34" y="4" width="26" height="26" rx="4" fill="#6d8" /><rect x="34" y="34" width="26" height="26" rx="4" fill="#4ae" /></svg>')
 async function init(){
 	document.head.append(iconLink)
@@ -395,23 +404,38 @@ async function init(){
 					boxShadow: '0 8px 20px rgba(20,30,40,0.06)',
 					display: 'flex',
 					alignItems: 'center',
-					gap: '16px',
+					justifyContent: 'space-between',
 					marginBottom: '18px'
 				},
 				content: [
 					$n('img', {src: defaultIcon, style:{width:'56px', height:'56px', borderRadius:'10px', flex:'0 0 auto'}}),
-					$n('div', {content: [
+					$n('div', {className:'header-title', style:{padding:'0 16px', flex:'1'}, content: [
 						$n('div', {content: '应用列表', style:{fontSize:'18px', fontWeight:'700'}}),
 						$n('div', {content: '管理已安装的 SPA 应用', style:{color:'#6b7280', fontSize:'13px'}})
-					], style:{flex:'1'}}),
+					]}),
 					// 右侧按钮组 + 版本块
 					$n('div', {style:{display:'flex', gap:'12px', alignItems:'center'}, content: [
-						$n('div', {style:{display:'flex', gap:'8px', alignItems:'center'}, content: [
-							$n('button', {id: 'load-app-btn', content: '+ 加载应用', onclick: async function(){
-								let file = await FileInput('.bin')
-								if(file) loadApp(file, true)
-							}, style:{background:'#0ea5e9', color:'#fff', border:'none', padding:'10px 14px', borderRadius:'10px', cursor:'pointer', fontWeight:'600'}})
-						]}),
+						$n('div', {
+							style:{display:'flex', gap:'8px', alignItems:'center'},
+							content: [$n('button', {
+								id: 'load-app-btn',
+								content: '+ 加载应用',
+								style: {
+									background:'#0ea5e9',
+									color:'#fff',
+									border:'none',
+									padding:'10px 14px',
+									borderRadius:'10px',
+									cursor:'pointer',
+									fontWeight:'600',
+									boxShadow: '0 6px 18px rgba(16,24,40,0.1)'
+								},
+								async onclick(){
+									let file = await FileInput('.bin')
+									loadApp(file, true)
+								}
+							})]
+						}),
 						$n('div', {
 							style: {
 								display: 'flex',
@@ -425,10 +449,10 @@ async function init(){
 							content: [
 								$n('div', { content: '版本 v'+VERSION_TAG, style: { fontWeight: '700', color: '#0f172a' } }),
 								$n('a', {
+									content: 'GitHub 仓库',
 									href: 'https://github.com/Chebys/SPA-frame',
 									target: '_blank',
 									rel: 'noopener noreferrer',
-									content: 'GitHub 仓库',
 									style: { color: '#06b6d4', textDecoration: 'none', fontSize: '13px' }
 								})
 							]
@@ -476,7 +500,18 @@ async function init(){
 								]
 							}),
 							detailPanel = $n('div', {
-								style: {...cardStyle, minHeight: '180px', display:'flex', flexDirection:'column', gap:'8px', justifyContent:'center', alignItems:'center', textAlign:'center', color:'#9CA3AF'},
+								style: {
+									...cardStyle,
+									minHeight: '180px',
+									display:'flex',
+									flexDirection:'column',
+									gap:'8px',
+									justifyContent:'center',
+									alignItems:'center',
+									textAlign:'center',
+									color:'#9CA3AF',
+									userSelect: 'text'
+								},
 								content: [
 									$n('div', {content: '选择一个应用以查看详细信息', style:{fontWeight:'700', color:'#0f172a'}}),
 									$n('div', {content: '点击列表中的卡片查看 meta、文件清单并进行导出/删除/启动等操作。', style:{fontSize:'13px'}})
@@ -519,13 +554,23 @@ function showDetails(id, meta, cardEl){
 
 	const rows = $n('div', {style:{width:'100%', textAlign:'left', color:'#374151', marginTop:'6px'}, content:[
 		$n('div', {content: '作者：' + (meta.author||'未知'), style:{fontSize:'13px', color:'#6b7280'}}),
-		$n('div', {content: meta.desc||'暂无描述', style:{fontSize:'13px', color:'#6b7280', marginTop:'8px', whiteSpace:'normal'}})
+		$n('div', {content: '版本：' + (meta.version??'未知'), style:{fontSize:'13px', color:'#6b7280'}}),
+		$n('div', {content: meta.desc||'暂无描述', style:{fontSize:'13px', color:'#6b7280', marginTop:'8px', whiteSpace:'pre-wrap'}})
 	]})
 	detailPanel.append(rows)
 
+	let metaDiv //元数据
 	const actions = $n('div', {style:{display:'flex', gap:'8px', marginTop:'12px', width:'100%', justifyContent:'flex-end'}, content: [
-		$n('button', {content: '启动', onclick: ()=>pkgmanager.getPackage(id).then(loadApp), style:{background:'#06b6d4', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}}),
-		$n('button', {content: '导出', onclick: ()=>pkgmanager.getPackage(id).then(file=>DownloadBlob(file, id+'.bin')), style:{background:'#374151', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}}),
+		$n('button', {
+			content: '启动',
+			onclick: ()=>pkgmanager.getPackage(id).then(loadApp),
+			style:{background:'#06b6d4', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}
+		}),
+		$n('button', {
+			content: '导出',
+			onclick: ()=>pkgmanager.getPackage(id).then(file=>DownloadBlob(file, id+'.bin')),
+			style:{background:'#374151', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}
+		}),
 		$n('button', {
 			content: '删除',
 			style: {background:'#ef4444', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'},
@@ -543,24 +588,28 @@ function showDetails(id, meta, cardEl){
 			style: {background:'#fff', color:'#374151', border:'1px solid #E5E7EB', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'},
 			onclick(){
 				// show raw meta JSON in a modal-like small pane inside detailPanel
-				const raw = $n('pre', {
-					content: JSON.stringify(meta, null, 2),
-					style:{textAlign:'left', maxHeight:'240px', overflow:'auto', width:'100%', background:'#f8fafc', padding:'10px', borderRadius:'8px'}
-				})
-				detailPanel.append($n('div', {
+				if(metaDiv)return
+				metaDiv = $n('div', {
 					style:{width:'100%', marginTop:'8px'},
 					content: [
-						raw,
+						$n('pre', {
+							content: JSON.stringify(meta, null, 2),
+							style:{textAlign:'left', maxHeight:'240px', overflow:'auto', width:'100%', background:'#f8fafc', padding:'10px', borderRadius:'8px'}
+						}),
 						$n('div', {
 							style:{display:'flex', justifyContent:'flex-end', marginTop:'6px'},
 							content: [$n('button', {
-								content:'关闭',
-								onclick: e=>{ raw.parentNode && raw.parentNode.remove(); e.target.parentNode.remove(); },
-								style:{padding:'6px 10px', borderRadius:'6px'}
+								content: '关闭',
+								style: {padding:'6px 10px', borderRadius:'6px'},
+								onclick(e){
+									metaDiv.remove()
+									metaDiv = null
+								}
 							})]
 						})
 					]
-				}))
+				})
+				detailPanel.append(metaDiv)
 			}
 		})
 	]})
@@ -590,7 +639,6 @@ function displayList(list){
 				padding: '12px',
 				background: '#fff',
 				borderRadius: '10px',
-				boxShadow: '0 6px 14px rgba(20,30,40,0.04)',
 				cursor: 'pointer'
 			},
 			onclick(){
@@ -624,45 +672,48 @@ function refreshList(){
 	return pkgmanager.list().then(displayList)
 }
 applyCSS(`
+*{ box-sizing: border-box; user-select: inherit; }
 :root{
 	--bg: #f6f9fb;
 	--card-bg: #ffffff;
 	--muted: #6b7280;
 	--accent: #06b6d4;
 }
-*{ box-sizing: border-box; }
-body{ background: var(--bg); color: #0f172a; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+body{
+	background: var(--bg);
+	color: #0f172a;
+	user-select: none;
+	-webkit-font-smoothing:antialiased;
+	-moz-osx-font-smoothing:grayscale;
+}
 
 .package-item{
+	box-shadow: 0 6px 14px rgba(20,30,40,0.04);
 	border: none;
 	transition: transform 160ms ease, box-shadow 160ms ease, box-shadow 220ms ease;
 }
 .package-item:hover{
 	transform: translateY(-4px);
-	box-shadow: 0 12px 30px rgba(16,24,40,0.08);
+	box-shadow: 0 8px 14px rgba(16,24,40,0.08);
 }
 .package-item.selected{
 	outline: 2px solid rgba(6,182,212,0.2);
-	box-shadow: 0 14px 36px rgba(16,24,40,0.2);
+	box-shadow: 0 10px 14px rgba(16,24,40,0.1);
 	transform: translateY(-6px);
 }
 
 button{
 	font-family: inherit;
 	transition: 0.1s;
+	user-select: none;
 }
 button:hover{
 	filter: brightness(90%);
 }
-#load-app-btn{
-	padding-left: 1rem;
-	padding-right: 1rem;
-	border-radius: 10px;
-	box-shadow: 0 6px 18px rgba(16,24,40,0.06);
-}
 @media (max-width: 720px){
 	/* 在窄屏上让容器更紧凑 */
 	:root{ --card-padding: 12px; }
+	.header-title{ display: none; }
 }
 `)
 
