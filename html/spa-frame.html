@@ -135,6 +135,11 @@
 	globalThis.IDBStorage = IDBStorage
 })();
 
+const VERSION_TAG = '0.4'
+const API_VERSION = 0
+const DEFAULT_PACKAGE_URL = 'https://chebys.pages.dev/data/spa/%s.spa'
+const SPA_EXT = '.spa'
+
 async function split(blob){
 	async function findNUL(){
 		let bfr_size = 256*1024 //每次读取 256KB
@@ -174,6 +179,37 @@ function DownloadBlob(file, name){
 	setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
 	a.remove();
 }
+XMLHttpRequest.prototype.getHeaders ||= function(){
+	var str = this.getAllResponseHeaders().trim();
+	var entries = [];
+	for(let line of str.split('\r\n'))
+		entries.push(line.split(': '));
+	return new Headers(entries);
+}
+function XHRPromise(url, opts={}){
+	var {method, body, onProgress, onUploadProgress, signal, timeout} = opts;
+	var xhr = new XMLHttpRequest;
+	xhr.open(method||'GET', url);
+	xhr.responseType = 'blob';
+	xhr.onprogress = onProgress;
+	xhr.upload.onprogress = onUploadProgress;
+	xhr.timeout = timeout;
+	var abort_reason;
+	function abort(reason='no reason'){
+		abort_reason = reason;
+		xhr.abort();
+	}
+	signal?.addEventListener('abort', ()=>abort(signal.reason));
+	return new Promise((resolve, reject)=>{
+		xhr.send(body);
+		xhr.onload = ()=>resolve(new Response(xhr.response, {
+			status: xhr.status,
+			headers: xhr.getHeaders()
+		}));
+		xhr.onabort = ()=>reject(new DOMException(abort_reason, 'AbortError'));
+		xhr.onerror = xhr.ontimeout = reject;
+	});
+}
 async function PackageManager(dbName){
 	let packagesStore = new IDBStorage(dbName, 'packages')
 	let packagesMeta = new IDBStorage(dbName, 'packages-meta')
@@ -183,6 +219,7 @@ async function PackageManager(dbName){
 		},
 		async addPackage(id, file, meta){
 			meta ||= (await split(file)).meta
+			meta.size = file.size
 			await packagesMeta.set(id, meta)
 			await packagesStore.set(id, file)
 		},
@@ -197,8 +234,6 @@ async function PackageManager(dbName){
 }
 var pkgmanager
 
-const VERSION_TAG = '0.3'
-const API_VERSION = 0
 function isCompatible(ver){
 	return ver == API_VERSION
 }
@@ -219,7 +254,7 @@ async function loadBlob(b, type){
 		default: throw new Error('invalid preload type: '+type)
 	}
 }
-async function loadApp(file, addPackage){
+async function loadApp(file, addPackage=false){
 	//console.log('loadApp', file)
 	let app
 	try{
@@ -260,6 +295,78 @@ async function loadApp(file, addPackage){
 	}
 	app && runApp(app)
 }
+function fetchApp({id, url}){
+	document.body.style.textAlign = 'center'
+	applyCSS(`
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    `)
+	
+	let title = $n('h3', {content:'正在远程加载应用'})
+	let progressText = $n('span', {content:'正在连接'})
+	let progressLabel = $n('div', {content:['当前进度：', progressText]})
+    
+    // 创建进度条容器和进度条元素
+    let progressBar = $n('div', {
+        style: {
+            width: '0%',
+            height: '100%',
+            backgroundColor: '#2196F3',
+            transition: 'width 0.3s ease'
+        }
+    })
+    let progressBarContainer = $n('div', {
+        style: {
+            width: '80%',
+            height: '20px',
+            backgroundColor: '#f0f0f0',
+            borderRadius: '10px',
+            margin: '10px auto',
+            overflow: 'hidden'
+        },
+		content: [progressBar]
+    })
+    
+    let urlLabel = $n('div', {content:['url: ', $n('a', {content:url, href:url})]})
+	let cancelBtn = $n('button', {
+		content: '取消',
+		style: btnStyle,
+		onclick(){
+			location.search = ''
+		}
+	})
+    
+    document.body.append(title, progressLabel, progressBarContainer, urlLabel, cancelBtn)
+    
+	function onProgress({loaded, total}){
+		let text = getSizeText(loaded)
+		if(total) {
+			text += ' / '+getSizeText(total)
+			let percentage = Math.round((loaded / total) * 100)
+			progressBar.style.width = percentage + '%'
+		} else {
+			// 如果没有总大小信息，显示脉冲动画
+			progressBar.style.width = '50%'
+			progressBar.style.backgroundColor = '#2196F3'
+			progressBar.style.animation = 'pulse 1.5s infinite'
+		}
+		progressText.textContent = text
+	}
+	function onError(err){
+		console.error(err)
+		alert('获取软件包失败：'+err)
+	}
+    XHRPromise(url, {onProgress}).then(async res=>{
+		if(!res.ok)
+			return onError(res.status)
+		let blob = await res.blob()
+		loadApp(blob, true) //todo: 检查id
+	}, onError)
+}
+
 function runApp(app){
 	document.head.innerHTML = ''
 	document.head.append($n('title', {content:app.name}))
@@ -280,7 +387,7 @@ function runApp(app){
 			throw new Error('module not found: '+name)
 		
 		running_modules[name] = true
-		let res = Function('require', script)(makeRequire(name))
+		let res = Function('require', '"use strict";'+script)(makeRequire(name))
 		delete running_modules[name]
 		modules[name] = res
 		return res
@@ -303,6 +410,7 @@ function runApp(app){
 			return name in modules ? modules[name] : runModule(name)
 		}
 	}
+	//修改以下 API 须变更 API_VERSION
 	globalThis.SPA_FRAME = true
 	globalThis.require = makeRequire('') //用于调试
 	globalThis.Assets = app.assets
@@ -359,22 +467,26 @@ function $n(tag, data={}){
 	return el
 }
 
+var InitParams = new URLSearchParams(location.search)
 var pkglist
-var detailPanel  // will hold right-side details panel element
+var detailPanel
 let iconLink = $n('link', {rel:'icon'})
+let btnStyle = {color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', background:'#06b6d4', cursor:'pointer', fontWeight:'600'}
 var defaultIcon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="48" height="48"><rect x="4" y="4" width="26" height="26" rx="4" fill="#4ae" /><rect x="4" y="34" width="26" height="26" rx="4" fill="#4ae" /><rect x="34" y="4" width="26" height="26" rx="4" fill="#6d8" /><rect x="34" y="34" width="26" height="26" rx="4" fill="#4ae" /></svg>')
 async function init(){
 	document.head.append(iconLink)
 	iconLink.href = defaultIcon
 	pkgmanager = await PackageManager('SPA-frame')
-	document.body.style.margin = '0'
-	document.body.style.fontFamily = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial'
-	document.body.style.background = '#f6f9fb'
 	
 	var packages = await pkgmanager.list()
 	var autoRun = getAutoRun(packages)
 	if(autoRun){
 		pkgmanager.getPackage(autoRun).then(loadApp)
+		return
+	}
+	var to_fetch = getFetch()
+	if(to_fetch.url){
+		fetchApp(to_fetch)
 		return
 	}
 
@@ -431,7 +543,7 @@ async function init(){
 									boxShadow: '0 6px 18px rgba(16,24,40,0.1)'
 								},
 								async onclick(){
-									let file = await FileInput('.bin')
+									let file = await FileInput(SPA_EXT)
 									loadApp(file, true)
 								}
 							})]
@@ -526,15 +638,45 @@ async function init(){
 	
 	document.body.append(container)
 	displayList(packages)
+	setOnDropFile(document.body, loadApp)
 }
 function getAutoRun(packages){
-	var search = new URLSearchParams(location.search)
-	var autoRun = search.get('auto_run') || localStorage.getItem('spa-auto-run')
+	var autoRun = InitParams.get('fetch') || InitParams.get('auto_run') || localStorage.getItem('spa-auto-run')
+	//todo: 对于fetch可能需要检查新版本
 	for(let [id, meta] of packages){
 		if(id==autoRun)return id
 	}
 }
+function getFetch(){
+	var id = InitParams.get('fetch')
+	var url = InitParams.get('fetch_url')
+	if(id && !url)
+		url = DEFAULT_PACKAGE_URL.replace('%s', id)
+	return {id, url}
+}
 
+function setOnDropFile(el, fn){
+	el.addEventListener('dragover', e=>e.preventDefault())
+	el.addEventListener('drop', e=>{
+		e.preventDefault()
+		fn(e.dataTransfer.files[0])
+	})
+}
+function getSizeText(size){
+	let unit = 'B'
+	if(size>1024){
+		size /= 1024
+		unit = 'KB'
+	if(size>1024){
+		size /= 1024
+		unit = 'MB'
+	if(size>1024){
+		size /= 1024
+		unit = 'GB'
+	}}}
+	size = Math.round(size*100) / 100
+	return size+' '+unit
+}
 function showDetails(id, meta, cardEl){
 	// highlight selected card
 	const cards = document.querySelectorAll('.package-item')
@@ -543,11 +685,12 @@ function showDetails(id, meta, cardEl){
 	// clear and build details
 	detailPanel.textContent = ''
 	// header with icon and title
+	let sizeText = meta.size ? getSizeText(meta.size) : '未知'
 	const header = $n('div', {style:{display:'flex', gap:'12px', alignItems:'center', width:'100%'}, content:[
 		$n('img', {src: meta.icon || defaultIcon, style:{width:'64px', height:'64px', borderRadius:'10px', objectFit:'cover', flex:'0 0 auto'}}),
 		$n('div', {style:{flex:'1 1 0', textAlign:'left'}, content: [
 			$n('div', {content: meta.name || id, style:{fontWeight:'800', fontSize:'16px', color:'#0f172a'}}),
-			$n('div', {content: 'ID: '+id, style:{fontSize:'12px', color:'#6b7280', marginTop:'4px'}})
+			$n('div', {content: '大小：'+sizeText, style:{fontSize:'12px', color:'#6b7280', marginTop:'4px'}})
 		]})
 	]})
 	detailPanel.append(header)
@@ -564,16 +707,16 @@ function showDetails(id, meta, cardEl){
 		$n('button', {
 			content: '启动',
 			onclick: ()=>pkgmanager.getPackage(id).then(loadApp),
-			style:{background:'#06b6d4', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}
+			style:{...btnStyle, background:'#06b6d4'}
 		}),
 		$n('button', {
 			content: '导出',
-			onclick: ()=>pkgmanager.getPackage(id).then(file=>DownloadBlob(file, id+'.bin')),
-			style:{background:'#374151', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}
+			onclick: ()=>pkgmanager.getPackage(id).then(file=>DownloadBlob(file, id+SPA_EXT)),
+			style:{...btnStyle, background:'#374151'}
 		}),
 		$n('button', {
 			content: '删除',
-			style: {background:'#ef4444', color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'},
+			style: {...btnStyle, background:'#ef4444'},
 			async onclick(){
 				if(!confirm('确认删除 "'+(meta.name||id)+'" ?')) return
 				await pkgmanager.removePackage(id)
@@ -585,7 +728,7 @@ function showDetails(id, meta, cardEl){
 		}),
 		$n('button', {
 			content: '查看元数据',
-			style: {background:'#fff', color:'#374151', border:'1px solid #E5E7EB', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', fontWeight:'600'},
+			style: {...btnStyle, background:'#fff', color:'#374151', border:'1px solid #E5E7EB'},
 			onclick(){
 				// show raw meta JSON in a modal-like small pane inside detailPanel
 				if(metaDiv)return
@@ -680,8 +823,10 @@ applyCSS(`
 	--accent: #06b6d4;
 }
 body{
+	margin: 0;
 	background: var(--bg);
 	color: #0f172a;
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 	user-select: none;
 	-webkit-font-smoothing:antialiased;
 	-moz-osx-font-smoothing:grayscale;
