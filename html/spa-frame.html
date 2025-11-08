@@ -5,7 +5,7 @@
 <title>SPA</title>
 <script>window.onload=()=>{
 
-(()=>{
+var IDBStorage = (()=>{
 
 	Promise.fromIDBRequest ||= req =>
 		new Promise((resolve, reject)=>{
@@ -15,10 +15,14 @@
 		})
 
 	const dbPromises = Object.create(null)
+	const indexedDB_open = indexedDB.open.bind(indexedDB)
+	indexedDB.open = ()=>{
+		throw new Error("Access denied. Use ':storage' module instead.")
+	}
 	async function openDB(name, option={}){
 		let {version, stores} = option
 		if(!dbPromises[name]){
-			let req = indexedDB.open(name, version)
+			let req = indexedDB_open(name, version)
 			req.onupgradeneeded = () => stores && ungrade(req.result, stores)
 			dbPromises[name] = Promise.fromIDBRequest(req)
 			req.onblocked = req.$reject //若之前的数据库也通过 openDB 打开，则理论上不会阻塞
@@ -132,11 +136,11 @@
 		}
 	}
 
-	globalThis.IDBStorage = IDBStorage
+	return IDBStorage
 })();
 
 const VERSION_TAG = '0.4'
-const API_VERSION = 0
+const API_VERSION = 1
 const DEFAULT_PACKAGE_URL = 'https://chebys.pages.dev/data/spa/%s.spa'
 const SPA_EXT = '.spa'
 
@@ -210,9 +214,20 @@ function XHRPromise(url, opts={}){
 		xhr.onerror = xhr.ontimeout = reject;
 	});
 }
-async function PackageManager(dbName){
-	let packagesStore = new IDBStorage(dbName, 'packages')
-	let packagesMeta = new IDBStorage(dbName, 'packages-meta')
+async function PackageManager(){
+	let packagesStore = new IDBStorage('SPA-frame', 'packages')
+	let packagesMeta = new IDBStorage('SPA-frame', 'packages-meta')
+	let hexes = []
+	for(let i=0; i<256; i++)
+		hexes.push(i.toString(16).padStart(2, '0'))
+	await IDBStorage.checkVersion('SPA-data', 1, hexes)
+	function getDataStore(id){
+		let hash = 0
+		for(let i=0; i<id.length; i++)
+			hash += id.charCodeAt(i)
+		hash %= 256
+		return new IDBStorage('SPA-data', hash.toString(16).padStart(2, '0'))
+	}
 	return {
 		async list(){
 			return packagesMeta.entries()
@@ -226,10 +241,16 @@ async function PackageManager(dbName){
 		async removePackage(id){
 			await packagesMeta.del(id)
 			await packagesStore.del(id)
+			let store = getDataStore(id)
+			let keys = await store.keys()
+			let prefix = id+':'
+			keys = keys.filter(key=>key.startsWith(prefix))
+			await store.delMany(keys)
 		},
 		async getPackage(id){
 			return packagesStore.get(id)
-		}
+		},
+		getDataStore
 	}
 }
 var pkgmanager
@@ -417,6 +438,31 @@ function runApp(app){
 	globalThis.applyCSS = applyCSS
 	globalThis.importFont = importFont
 	modules[':spa'] = {$n, runApp, loadBlob, FileInput, DownloadBlob}
+	
+	let store = pkgmanager.getDataStore(app.id)
+	let prefix = app.id+':'
+	async function _keys(){
+		let keys = []
+		for(let k of await store.keys())
+			if(k.startsWith(prefix))
+				keys.push(k.slice(prefix.length))
+		return keys
+	}
+	modules[':storage'] = {
+		get(key){ return store.get(prefix+key) },
+		getMany(keys){ return store.getMany(keys.map(k=>prefix+k)) },
+		set(key, val){ return store.set(prefix+key, val) },
+		setMany(entries){ return store.setMany(entries.map(kv=>[prefix+kv[0], kv[1]])) },
+		del(key){ return store.del(prefix+key) },
+		delMany(keys){ return store.delMany(keys.map(k=>prefix+k)) },
+		keys: _keys,
+		async entries(){
+			let keys = await _keys()
+			let values = await store.getMany(keys)
+			return keys.map((key, i)=>[key, values[i]])
+		}
+	}
+	
 	try{
 		runModule(app.main)
 	}catch(err){
@@ -476,7 +522,7 @@ var defaultIcon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http:/
 async function init(){
 	document.head.append(iconLink)
 	iconLink.href = defaultIcon
-	pkgmanager = await PackageManager('SPA-frame')
+	pkgmanager = await PackageManager()
 	
 	var packages = await pkgmanager.list()
 	var autoRun = getAutoRun(packages)
