@@ -144,7 +144,7 @@ const API_VERSION = 1
 const OFFICIAL_ORIGIN = 'https://chebys.pages.dev'
 const DEFAULT_PACKAGE_URL = OFFICIAL_ORIGIN+'/data/spa/%s.spa'
 const SPA_EXT = '.spa'
-const SMALL_SCREEN_QRY = '(max-width: 720px)'
+const SMALL_SCREEN_QRY = matchMedia('(max-width: 720px)')
 
 async function split(blob){
 	async function findNUL(){
@@ -820,7 +820,7 @@ function showDetails(id, meta, cardEl){
 		})
 	]})
 	detailPanel.append(actions)
-	if(matchMedia(SMALL_SCREEN_QRY)){
+	if(SMALL_SCREEN_QRY.matches){
 		let bg = $n('div', {
 			content: [detailPanel],
 			style: {
@@ -946,7 +946,7 @@ button:hover{
 	display: flex;
 	flex-direction: column;
 }
-@media ${SMALL_SCREEN_QRY}{
+@media ${SMALL_SCREEN_QRY.media}{
 	/* 在窄屏上让容器更紧凑 */
 	:root{ --card-padding: 12px; }
 	.header-title{ display: none; }
