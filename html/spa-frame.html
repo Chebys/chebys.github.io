@@ -139,10 +139,12 @@ var IDBStorage = (()=>{
 	return IDBStorage
 })();
 
-const VERSION_TAG = '0.4'
+const VERSION_TAG = '0.5'
 const API_VERSION = 1
-const DEFAULT_PACKAGE_URL = 'https://chebys.pages.dev/data/spa/%s.spa'
+const OFFICIAL_ORIGIN = 'https://chebys.pages.dev'
+const DEFAULT_PACKAGE_URL = OFFICIAL_ORIGIN+'/data/spa/%s.spa'
 const SPA_EXT = '.spa'
+const SMALL_SCREEN_QRY = '(max-width: 720px)'
 
 async function split(blob){
 	async function findNUL(){
@@ -158,12 +160,12 @@ async function split(blob){
 		}
 		throw new Error("no '\\0' found")
 	}
-    let pos = await findNUL()
-    let str = await blob.slice(0, pos).text()
-    return {
-        meta: JSON.parse(str),
-        blob: blob.slice(pos+1)
-    }
+	let pos = await findNUL()
+	let str = await blob.slice(0, pos).text()
+	return {
+		meta: JSON.parse(str),
+		blob: blob.slice(pos+1)
+	}
 }
 function FileInput(accept){
 	var input = document.createElement('input');
@@ -254,6 +256,7 @@ async function PackageManager(){
 	}
 }
 var pkgmanager
+var MetaStore = new IDBStorage('SPA-frame', 'meta')
 
 function isCompatible(ver){
 	return ver == API_VERSION
@@ -314,44 +317,46 @@ async function loadApp(file, addPackage=false){
 		alert('加载失败。错误信息见控制台。')
 		console.error(err)
 	}
-	app && runApp(app)
+	if(app){
+		runApp(app)
+	}
 }
 function fetchApp({id, url}){
 	document.body.style.textAlign = 'center'
 	applyCSS(`
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
-    `)
+		@keyframes pulse {
+			0% { opacity: 0.6; }
+			50% { opacity: 1; }
+			100% { opacity: 0.6; }
+		}
+	`)
 	
 	let title = $n('h3', {content:'正在远程加载应用'})
 	let progressText = $n('span', {content:'正在连接'})
 	let progressLabel = $n('div', {content:['当前进度：', progressText]})
-    
-    // 创建进度条容器和进度条元素
-    let progressBar = $n('div', {
-        style: {
-            width: '0%',
-            height: '100%',
-            backgroundColor: '#2196F3',
-            transition: 'width 0.3s ease'
-        }
-    })
-    let progressBarContainer = $n('div', {
-        style: {
-            width: '80%',
-            height: '20px',
-            backgroundColor: '#f0f0f0',
-            borderRadius: '10px',
-            margin: '10px auto',
-            overflow: 'hidden'
-        },
+	
+	// 创建进度条容器和进度条元素
+	let progressBar = $n('div', {
+		style: {
+			width: '0%',
+			height: '100%',
+			background: 'linear-gradient(90deg, #3498db, #9b59b6)',
+			transition: 'width 0.3s ease'
+		}
+	})
+	let progressBarContainer = $n('div', {
+		style: {
+			width: '80%',
+			height: '20px',
+			backgroundColor: '#f0f0f0',
+			borderRadius: '10px',
+			margin: '10px auto',
+			overflow: 'hidden'
+		},
 		content: [progressBar]
-    })
-    
-    let urlLabel = $n('div', {content:['url: ', $n('a', {content:url, href:url})]})
+	})
+	
+	let urlLabel = $n('div', {content:['url: ', $n('a', {content:url, href:url})]})
 	let cancelBtn = $n('button', {
 		content: '取消',
 		style: btnStyle,
@@ -359,9 +364,9 @@ function fetchApp({id, url}){
 			location.search = ''
 		}
 	})
-    
-    document.body.append(title, progressLabel, progressBarContainer, urlLabel, cancelBtn)
-    
+	
+	document.body.append(title, progressLabel, progressBarContainer, urlLabel, cancelBtn)
+	
 	function onProgress({loaded, total}){
 		let text = getSizeText(loaded)
 		if(total) {
@@ -370,7 +375,7 @@ function fetchApp({id, url}){
 			progressBar.style.width = percentage + '%'
 		} else {
 			// 如果没有总大小信息，显示脉冲动画
-			progressBar.style.width = '50%'
+			progressBar.style.width = '100%'
 			progressBar.style.backgroundColor = '#2196F3'
 			progressBar.style.animation = 'pulse 1.5s infinite'
 		}
@@ -378,14 +383,35 @@ function fetchApp({id, url}){
 	}
 	function onError(err){
 		console.error(err)
-		alert('获取软件包失败：'+err)
+		progressText.style.color = 'red'
+		progressText.textContent = '获取软件包失败，详见控制台'
 	}
-    XHRPromise(url, {onProgress}).then(async res=>{
+	XHRPromise(url, {onProgress}).then(async res=>{
 		if(!res.ok)
 			return onError(res.status)
 		let blob = await res.blob()
 		loadApp(blob, true) //todo: 检查id
 	}, onError)
+}
+
+const SRC_TEXT = {
+	'launch': '启动已安装的应用', //应该用不到
+	'user-select': '手动加载',
+	'official': '官方发布平台',
+	'third-party': '第三方链接' //形如 third-party:www.example.com
+}
+async function getOnLoadAction(src){
+	//action 的可能取值：install-run, install, run, confirm
+	if(src=='launch')
+		return 'run'
+	let config = await MetaStore.get('config') || {}
+	let actions = config['onload-actions'] || {}
+	if(src.startsWith('third-party:'))
+		src = 'third-party'
+	let action = actions[src]
+	if(action)
+		return action
+	return src=='third-party' ? 'confirm' : 'install-run'
 }
 
 function runApp(app){
@@ -437,7 +463,7 @@ function runApp(app){
 	globalThis.Assets = app.assets
 	globalThis.applyCSS = applyCSS
 	globalThis.importFont = importFont
-	modules[':spa'] = {$n, runApp, loadBlob, FileInput, DownloadBlob}
+	modules[':spa'] = {$n, runApp, loadBlob, FileInput, DownloadBlob} //todo: 分离 runApp
 	
 	let store = pkgmanager.getDataStore(app.id)
 	let prefix = app.id+':'
@@ -445,7 +471,7 @@ function runApp(app){
 		let keys = []
 		for(let k of await store.keys())
 			if(k.startsWith(prefix))
-				keys.push(k.slice(prefix.length))
+				keys.push(k)
 		return keys
 	}
 	modules[':storage'] = {
@@ -455,11 +481,14 @@ function runApp(app){
 		setMany(entries){ return store.setMany(entries.map(kv=>[prefix+kv[0], kv[1]])) },
 		del(key){ return store.del(prefix+key) },
 		delMany(keys){ return store.delMany(keys.map(k=>prefix+k)) },
-		keys: _keys,
+		async keys(){
+			let keys = await _keys()
+			return keys.map(k=>k.slice(prefix.length))
+		},
 		async entries(){
 			let keys = await _keys()
 			let values = await store.getMany(keys)
-			return keys.map((key, i)=>[key, values[i]])
+			return keys.map((k, i)=>[k.slice(prefix.length), values[i]])
 		}
 	}
 	
@@ -482,7 +511,7 @@ function importFont(family, font, format='opentype'){
 	if(typeof font == 'string')
 		font = Assets[font]
 	if(!(font instanceof Blob))
-		throw new Error('Invalid font')
+		throw new TypeError('Invalid font: '+font)
 	let url = URL.createObjectURL(font)
 	applyCSS(`
 	@font-face {
@@ -536,155 +565,143 @@ async function init(){
 		return
 	}
 
-	var cardStyle = { //右侧卡片
+	document.body.append(MainContainer())
+	displayList(packages)
+	setOnDropFile(document.body, loadApp)
+}
+function MainContainer(){ // 控制面板容器
+	var cardStyle = { //右侧卡片样式
 		background:'#fff',
 		padding:'16px',
 		borderRadius:'12px',
 		boxShadow:'0 6px 18px rgba(22,28,37,0.06)',
 		marginBottom: '12px'
 	}
-	// 控制面板容器
-	var container = $n('div', {
+	var topBar = $n('div', {
 		style: {
-			width: '100%',
-			boxSizing: 'border-box',
-			padding: '28px',
-			maxWidth: '980px',
-			margin: '0 auto',
+			background: 'linear-gradient(90deg,#ffffff 0%, #f8fdff 100%)',
+			padding: '18px',
+			borderRadius: '14px',
+			boxShadow: '0 8px 20px rgba(20,30,40,0.06)',
+			display: 'flex',
+			alignItems: 'center',
+			justifyContent: 'space-between',
+			marginBottom: '18px'
 		},
 		content: [
-			// 顶部卡片
+			$n('img', {src: defaultIcon, style:{width:'56px', height:'56px', borderRadius:'10px', flex:'0 0 auto'}}),
+			$n('div', {className:'header-title', style:{padding:'0 16px', flex:'1'}, content: [
+				$n('div', {content: '应用列表', style:{fontSize:'18px', fontWeight:'700'}}),
+				$n('div', {content: '管理已安装的 SPA 应用', style:{color:'#6b7280', fontSize:'13px'}})
+			]}),
+			// 右侧按钮组 + 版本块
+			$n('div', {style:{display:'flex', gap:'12px', alignItems:'center'}, content: [
+				$n('div', {
+					style:{display:'flex', gap:'8px', alignItems:'center'},
+					content: [$n('button', {
+						id: 'load-app-btn',
+						content: '+ 加载应用',
+						style: {
+							background:'#0ea5e9',
+							color:'#fff',
+							border:'none',
+							padding:'10px 14px',
+							borderRadius:'10px',
+							cursor:'pointer',
+							fontWeight:'600',
+							boxShadow: '0 6px 18px rgba(16,24,40,0.1)'
+						},
+						async onclick(){
+							let file = await FileInput(SPA_EXT)
+							loadApp(file, true)
+						}
+					})]
+				}),
+				$n('div', {
+					style: {
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'flex-end',
+						gap: '4px',
+						fontSize: '13px',
+						color: '#6b7280',
+						flex: '0 0 auto'
+					},
+					content: [
+						$n('div', { content: '版本 v'+VERSION_TAG, style: { fontWeight: '700', color: '#0f172a' } }),
+						$n('a', {
+							content: 'GitHub 仓库',
+							href: 'https://github.com/Chebys/SPA-frame',
+							target: '_blank',
+							rel: 'noopener noreferrer',
+							style: { color: '#06b6d4', textDecoration: 'none', fontSize: '13px' }
+						})
+					]
+				})
+			]})
+		]
+	})
+	var body = $n('div', {
+		style: {display:'flex', gap: '18px', alignItems: 'flex-start'},
+		content: [
+			// 左侧：包列表
 			$n('div', {
 				style: {
-					background: 'linear-gradient(90deg,#ffffff 0%, #f8fdff 100%)',
-					padding: '18px',
-					borderRadius: '14px',
-					boxShadow: '0 8px 20px rgba(20,30,40,0.06)',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					marginBottom: '18px'
+					flex: '1 1 0',
+					minWidth: '300px'
 				},
 				content: [
-					$n('img', {src: defaultIcon, style:{width:'56px', height:'56px', borderRadius:'10px', flex:'0 0 auto'}}),
-					$n('div', {className:'header-title', style:{padding:'0 16px', flex:'1'}, content: [
-						$n('div', {content: '应用列表', style:{fontSize:'18px', fontWeight:'700'}}),
-						$n('div', {content: '管理已安装的 SPA 应用', style:{color:'#6b7280', fontSize:'13px'}})
-					]}),
-					// 右侧按钮组 + 版本块
-					$n('div', {style:{display:'flex', gap:'12px', alignItems:'center'}, content: [
-						$n('div', {
-							style:{display:'flex', gap:'8px', alignItems:'center'},
-							content: [$n('button', {
-								id: 'load-app-btn',
-								content: '+ 加载应用',
-								style: {
-									background:'#0ea5e9',
-									color:'#fff',
-									border:'none',
-									padding:'10px 14px',
-									borderRadius:'10px',
-									cursor:'pointer',
-									fontWeight:'600',
-									boxShadow: '0 6px 18px rgba(16,24,40,0.1)'
-								},
-								async onclick(){
-									let file = await FileInput(SPA_EXT)
-									loadApp(file, true)
-								}
-							})]
-						}),
-						$n('div', {
-							style: {
-								display: 'flex',
-								flexDirection: 'column',
-								alignItems: 'flex-end',
-								gap: '4px',
-								fontSize: '13px',
-								color: '#6b7280',
-								flex: '0 0 auto'
-							},
-							content: [
-								$n('div', { content: '版本 v'+VERSION_TAG, style: { fontWeight: '700', color: '#0f172a' } }),
-								$n('a', {
-									content: 'GitHub 仓库',
-									href: 'https://github.com/Chebys/SPA-frame',
-									target: '_blank',
-									rel: 'noopener noreferrer',
-									style: { color: '#06b6d4', textDecoration: 'none', fontSize: '13px' }
-								})
-							]
-						})
-					]})
+					pkglist = $n('div', {
+						style: {
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '10px'
+						}
+					})
 				]
 			}),
-			// 主体：左侧列表 右侧 说明卡（右侧包含 detailPanel）
+			// 右侧：信息 / 操作文档 + details
 			$n('div', {
-				style: {display:'flex', gap: '18px', alignItems: 'flex-start'},
+				className: 'right-ctn',
 				content: [
-					// 左侧：包列表
 					$n('div', {
-						style: {
-							flex: '1 1 0',
-							minWidth: '300px'
-						},
+						style: cardStyle,
 						content: [
-							pkglist = $n('div', {
-								style: {
-									display: 'grid',
-									gap: '10px'
-								}
-							})
+							$n('div', {content: '使用说明', style:{fontWeight:'700', marginBottom:'8px'}}),
+							$n('ul', {style:{paddingLeft:'20px', color:'#6b7280', fontSize:'13px'}, content: [
+								$n('li', {content:'加载应用 选择安装包以安装到本地数据库，安装后无需保留安装包'}),
+								$n('li', {content:'启动 直接进入应用'}),
+								$n('li', {content:'删除 会从本地数据库移除'}),
+								$n('li', {content:'导出 从本地数据库导出安装包'}),
+							]})
 						]
 					}),
-					// 右侧：信息 / 操作文档 + details
-					$n('div', {
+					detailPanel = $n('div', {
 						style: {
-							width: '360px',
-							display: 'flex',
-							flexDirection: 'column'
+							...cardStyle,
+							minHeight: '180px',
+							display:'flex',
+							flexDirection:'column',
+							gap:'8px',
+							justifyContent:'center',
+							alignItems:'center',
+							textAlign:'center',
+							color:'#9CA3AF',
+							userSelect: 'text'
 						},
 						content: [
-							$n('div', {
-								style: cardStyle,
-								content: [
-									$n('div', {content: '使用说明', style:{fontWeight:'700', marginBottom:'8px'}}),
-									$n('ul', {style:{paddingLeft:'20px', color:'#6b7280', fontSize:'13px'}, content: [
-										$n('li', {content:'加载应用 选择安装包以安装到本地数据库，安装后无需保留安装包'}),
-										$n('li', {content:'启动 直接进入应用'}),
-										$n('li', {content:'删除 会从本地数据库移除'}),
-										$n('li', {content:'导出 从本地数据库导出安装包'}),
-									]})
-								]
-							}),
-							detailPanel = $n('div', {
-								style: {
-									...cardStyle,
-									minHeight: '180px',
-									display:'flex',
-									flexDirection:'column',
-									gap:'8px',
-									justifyContent:'center',
-									alignItems:'center',
-									textAlign:'center',
-									color:'#9CA3AF',
-									userSelect: 'text'
-								},
-								content: [
-									$n('div', {content: '选择一个应用以查看详细信息', style:{fontWeight:'700', color:'#0f172a'}}),
-									$n('div', {content: '点击列表中的卡片查看 meta、文件清单并进行导出/删除/启动等操作。', style:{fontSize:'13px'}})
-								]
-							})
-						]
+							$n('div', {content: '选择一个应用以查看详细信息', style:{fontWeight:'700', color:'#0f172a'}}),
+							$n('div', {content: '点击列表中的卡片查看 meta、文件清单并进行导出/删除/启动等操作。', style:{fontSize:'13px'}})
+						],
+						onclick(e){
+							e.stopPropagation()
+						}
 					})
 				]
 			})
 		]
 	})
-	
-	document.body.append(container)
-	displayList(packages)
-	setOnDropFile(document.body, loadApp)
+	return $n('div', { className: 'main-ctn', content: [topBar, body] })
 }
 function getAutoRun(packages){
 	var autoRun = InitParams.get('fetch') || InitParams.get('auto_run') || localStorage.getItem('spa-auto-run')
@@ -803,6 +820,23 @@ function showDetails(id, meta, cardEl){
 		})
 	]})
 	detailPanel.append(actions)
+	if(matchMedia(SMALL_SCREEN_QRY)){
+		let bg = $n('div', {
+			content: [detailPanel],
+			style: {
+				position: 'fixed',
+				left: '0', top: '0',
+				width: '100vw',
+				height: '100vh',
+				background: 'rgb(0 0 0 / 0.2)',
+				padding: '10px'
+			},
+			onclick(){
+				this.remove()
+			}
+		})
+		document.body.append(bg)
+	}
 }
 
 function displayList(list){
@@ -840,11 +874,11 @@ function displayList(list){
 					style: {width:'40px', height:'40px', borderRadius:'8px', objectFit:'cover', flex:'0 0 auto'}
 				}),
 				$n('div', {
+					style: {flex:'1', overflow:'hidden'},
 					content: [
 						$n('div', {content: meta.name || id, style: {fontWeight:'700'}}),
-						$n('div', {content: meta.desc || '', style:{fontSize:'12px', color:'#9CA3AF', marginTop:'6px', maxWidth:'40ch', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}})
-					],
-					style: {flex: '1 1 0'}
+						$n('div', {content: meta.desc || '', style:{fontSize:'12px', color:'#9CA3AF', marginTop:'6px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}})
+					]
 				}),
 				$n('button', {
 					content: '启动',
@@ -877,8 +911,14 @@ body{
 	-webkit-font-smoothing:antialiased;
 	-moz-osx-font-smoothing:grayscale;
 }
-
+.main-ctn{
+	width: 100%;
+	box-sizing: border-box;
+	padding: 28px;
+	max-width: 980px;
+}
 .package-item{
+	width: 100%;
 	box-shadow: 0 6px 14px rgba(20,30,40,0.04);
 	border: none;
 	transition: transform 160ms ease, box-shadow 160ms ease, box-shadow 220ms ease;
@@ -901,10 +941,17 @@ button{
 button:hover{
 	filter: brightness(90%);
 }
-@media (max-width: 720px){
+.right-ctn{
+	width: 360px;
+	display: flex;
+	flex-direction: column;
+}
+@media ${SMALL_SCREEN_QRY}{
 	/* 在窄屏上让容器更紧凑 */
 	:root{ --card-padding: 12px; }
 	.header-title{ display: none; }
+	.main-ctn{ padding: 10px; }
+	.right-ctn{ display: none; }
 }
 `)
 
