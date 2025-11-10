@@ -279,7 +279,6 @@ async function loadBlob(b, type){
 	}
 }
 async function loadApp(file, addPackage=false){
-	//console.log('loadApp', file)
 	let app
 	try{
 		let {meta, blob} = await split(file)
@@ -304,7 +303,6 @@ async function loadApp(file, addPackage=false){
 			}
 			index = end
 		}
-		//console.log(index, blob.size)
 		if(index != blob.size)
 			throw new Error('文件大小不匹配')
 		if(!(main in scripts))
@@ -895,7 +893,11 @@ function refreshList(){
 	return pkgmanager.list().then(displayList)
 }
 applyCSS(`
-*{ box-sizing: border-box; user-select: inherit; }
+*{
+	box-sizing: border-box;
+	user-select: inherit;
+	-webkit-tap-highlight-color: transparent;
+}
 :root{
 	--bg: #f6f9fb;
 	--card-bg: #ffffff;
