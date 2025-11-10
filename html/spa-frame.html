@@ -685,7 +685,8 @@ function MainContainer(){ // 控制面板容器
 							alignItems:'center',
 							textAlign:'center',
 							color:'#9CA3AF',
-							userSelect: 'text'
+							userSelect: 'text',
+							transition: '0.2s'
 						},
 						content: [
 							$n('div', {content: '选择一个应用以查看详细信息', style:{fontWeight:'700', color:'#0f172a'}}),
@@ -826,13 +827,21 @@ function showDetails(id, meta, cardEl){
 				left: '0', top: '0',
 				width: '100vw',
 				height: '100vh',
-				background: 'rgb(0 0 0 / 0.2)',
-				padding: '10px'
+				background: 'transparent',
+				padding: '10px',
+				transition: '0.2s'
 			},
 			onclick(){
-				this.remove()
+				detailPanel.style.transform = 'translateY(-100%)'
+				bg.style.background = 'transparent'
+				setTimeout(()=>{ this.remove() }, 200)
 			}
 		})
+		detailPanel.style.transform = 'translateY(-100%)'
+		setTimeout(()=>{
+			detailPanel.style.transform = ''
+			bg.style.background = 'rgb(0 0 0 / 0.2)'
+		}, 1)
 		document.body.append(bg)
 	}
 }
