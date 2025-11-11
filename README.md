@@ -1,3 +1,3 @@
 # chebys.github.io
 
-b站:<https://space.bilibili.com/289432465>
+b站：<https://space.bilibili.com/289432465>

@@ -38,6 +38,7 @@ body {
   z-index: 100;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 20px;
 }
 
@@ -73,6 +74,12 @@ body {
 
 #n:hover #ni {
   filter: brightness(1);
+}
+
+a.github {
+  height: 80%;
+  aspect-ratio: 1;
+  background: url(/icon/github.svg) center / contain;
 }
 
 .app-grid {
