@@ -67,7 +67,7 @@ Jua_Obj.proto.setProp('setProto', new Jua_NativeFunc((obj, proto)=>{
 		obj.proto = null;
 }));
 Jua_Obj.proto.setProp('getProto', new Jua_NativeFunc(obj => obj?.proto || Jua_Null.inst));
-Jua_Obj.proto.setProp('iter', new Jua_NativeFunc((obj, key)=>{ //不建议使用，性能较低
+Jua_Obj.proto.setProp('next', new Jua_NativeFunc((obj, key)=>{ //不建议使用，性能较低
 	if(!(obj instanceof Jua_Obj))
 		throw new JuaTypeError('Expect object');
 	if(key instanceof Jua_Str)
@@ -269,7 +269,7 @@ Jua_Array.proto.setProp('getItem', new Jua_NativeFunc((arr, i)=>{
 }));
 
 Jua_Num.rangeProto.proto = classProto;
-Jua_Num.rangeProto.setProp('iter', new Jua_NativeFunc((self, key)=>{
+Jua_Num.rangeProto.setProp('next', new Jua_NativeFunc((self, key)=>{
 	if(key instanceof Jua_Num)
 		key = key.add(new Jua_Num(1));
 	else

@@ -33,8 +33,8 @@ let Map = class({
 		let str = Map.stringify(key)
 		Object.del(self._, str)
 	},
-	iter(self, key){
-		let {key?, value?, done} = Object.iter(self._, key)
+	next(self, key){
+		let {key?, value?, done} = Object.next(self._, key)
 		return {
 			key,
 			value = done||self._[key],

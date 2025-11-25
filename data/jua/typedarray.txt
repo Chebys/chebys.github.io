@@ -29,7 +29,7 @@ let TypedArray = class({
 		pos *= self.size_per_el
 		self.buffer:write(bytes, pos)
 	},
-	iter(self, key){
+	next(self, key){
 		key ||= 0
 		let done = key>=self.length
 		return {

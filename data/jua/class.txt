@@ -29,7 +29,7 @@ let Range = class({
 		self.end = end
 		self.step = step
 	},
-	iter(self, key){ //迭代函数不改变self的状态
+	next(self, key){ //迭代函数不改变self的状态
 		if(type(key)!='number')
 			key = self.start
 		else
@@ -51,12 +51,12 @@ for(num in range){
 
 print('一次性迭代器')
 let Iterator = class({
-	init(self, target, iterFn=target.iter){
+	init(self, target, iterFn=target.next){
 		self.target = target
 		self.iterFn = iterFn
 		self.key = null
 	},
-	iter(self){ //迭代函数会改变self的状态
+	next(self){ //迭代函数会改变self的状态
 		let {value, done, key} = self.iterFn(self.target, self.key)
 		if(!done)self.key = key
 		return {value, done}

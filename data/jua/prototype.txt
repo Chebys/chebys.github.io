@@ -32,7 +32,7 @@ let Range = {
 		self.end = end
 		self.step = step
 	},
-	iter(self, key){ //迭代函数不改变self的状态
+	next(self, key){ //迭代函数不改变self的状态
 		if(type(key)!='number')
 			key = self.start
 		else
@@ -57,9 +57,9 @@ let Iterator = {
 	new = Object.new,
 	init(self, target, iterFn){
 		self.target = target
-		self.iterFn = iterFn || target.iter
+		self.iterFn = iterFn || target.next
 	},
-	iter(self){ //迭代函数会改变self的状态
+	next(self){ //迭代函数会改变self的状态
 		let {value, done, key} = self.iterFn(self.target, self.key)
 		if(!done)self.key = key
 		return {value, done}
