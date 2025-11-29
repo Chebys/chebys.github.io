@@ -39,7 +39,7 @@ export async function onRequest(context){
 	}
 	let headers = {
 		'Content-Type': mimeType || 'application/octet-stream',
-		'Content-Disposition': download ? `attachment; filename="${fileName||id}"` : 'inline',
+		'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${fileName||id}"`,
 		'Access-Control-Allow-Origin': '*',
 		'Cache-Control': 'no-store'
 	}
