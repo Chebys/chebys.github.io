@@ -35,6 +35,8 @@ export async function onRequest(context){
 		return SimpleResponse(404, '资源不存在')
 	if(key){
 		key = hex2bytes(key)
+		if(!key.length)
+			return SimpleResponse(400, '无效的密钥')
 		data = decrypt257(new Uint8Array(data), key)
 	}
 	let headers = {
