@@ -1,7 +1,7 @@
 import {XHRPromise, downloadBlob} from '/js/modules/downloadUtils.js'
 import FileInput from '/js/modules/offscreen-file-input.js'
 
-const KV_URL = 'https://chebys.pages.dev/kv_transferer'
+const KV_URL = '/kv_transferer'
 function KV({mode, filename, body, onProgress, onUploadProgress}){
 	var furl=KV_URL+'?', method='POST'
 	if(mode)furl += '&mode='+mode
