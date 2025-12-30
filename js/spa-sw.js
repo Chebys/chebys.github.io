@@ -17,8 +17,14 @@ async function refreshCache(){
 }
 async function cacheFirst(){
 	let {date, html} = await store.get('src-cache') || {}
-	if(!html || Date.now()-date > TTL)
+	if(html){ //有缓存
+		if(Date.now()-date > TTL && navigator.onLine)
+			html = await refreshCache()
+	}else if(navigator.onLine){ //无缓存，联网
 		html = await refreshCache()
+	}else{ //无缓存，未联网
+		html = '<h1>请连接网络</h1>'
+	}
 	return new Response(html, {headers: htmlHeaders})
 }
 
