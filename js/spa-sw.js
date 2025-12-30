@@ -11,13 +11,13 @@ async function refreshCache(){
 		date: Date.now(),
 		html
 	})
+	return html
 }
-async function cacheFirst(ev){
+async function cacheFirst(){
 	let {date, html} = await store.get('src-cache')
 	if(Date.now()-date > TTL)
-		refreshCache()
-	else
-		ev.respondWith(new Response(html, { 'Content-Type': 'text/html; charset=utf-8' })) 
+		html = await refreshCache()
+	return new Response(html, { 'Content-Type': 'text/html; charset=utf-8' })
 }
 
 self.addEventListener('install', ev => ev.waitUntil(refreshCache()))
@@ -28,6 +28,6 @@ self.addEventListener('fetch', ev => {
 	  return
   
   if (url.pathname == '/' || url.pathname.startsWith('/app/')) {
-    ev.waitUntil(cacheFirst(ev))
+    ev.respondWith(cacheFirst())
   }
 })
