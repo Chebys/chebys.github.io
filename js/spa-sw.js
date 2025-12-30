@@ -28,6 +28,6 @@ self.addEventListener('fetch', ev => {
 	  return
   
   if (url.pathname == '/' || url.pathname.startsWith('/app/')) {
-    cacheFirst(ev)
+    ev.waitUntil(cacheFirst(ev))
   }
 })
