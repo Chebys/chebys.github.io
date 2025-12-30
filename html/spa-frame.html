@@ -484,7 +484,7 @@ async function init(){
 	setOnDropFile(document.body, loadApp)
 	
 	if(IS_OFFICIAL)
-		navigator.serviceWorker.register('/sw.js') //缓存框架本体
+		navigator.serviceWorker.register('/sw.js', {type:'module'}) //缓存框架本体
 }
 function MainContainer(){ // 控制面板容器
 	let cardStyle = { //右侧卡片样式
