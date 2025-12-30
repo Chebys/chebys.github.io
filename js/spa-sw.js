@@ -2,11 +2,12 @@ import IDBStorage from 'https://js.x-ze.cn/idb-storage'
 
 const ORIGIN = 'https://spa.x-ze.cn'
 const TTL = 1000*3600*24 //1 天
-const store = new IDBStorage('spa-frame', 'meta')
+const store = new IDBStorage('SPA-frame', 'meta')
 const htmlHeaders = { 'Content-Type': 'text/html; charset=utf-8' }
 
 async function refreshCache(){
 	let res = await fetch(ORIGIN)
+	if(!res.ok)return
 	let html = await res.text()
 	await store.set('src-cache', {
 		date: Date.now(),
@@ -15,8 +16,8 @@ async function refreshCache(){
 	return html
 }
 async function cacheFirst(){
-	let {date, html} = await store.get('src-cache')
-	if(Date.now()-date > TTL)
+	let {date, html} = await store.get('src-cache') || {}
+	if(!html || Date.now()-date > TTL)
 		html = await refreshCache()
 	return new Response(html, {headers: htmlHeaders})
 }
@@ -29,6 +30,6 @@ self.addEventListener('fetch', ev => {
 	  return
   
   if (url.pathname == '/' || url.pathname.startsWith('/app/')) {
-    ev.respondWith(cacheFirst())
+    ev.respondWith(cacheFirst().catch(()=>fetch(ev.request)))
   }
 })
