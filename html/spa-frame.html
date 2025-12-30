@@ -447,15 +447,20 @@ function $n(tag, data={}){
 
 //以上为运行SPA所必需
 
-const OFFICIAL_ORIGIN = 'https://chebys.pages.dev'
-const DEFAULT_PACKAGE_URL = OFFICIAL_ORIGIN+'/data/spa/%s.spa'
+const OFFICIAL_ORIGIN = 'https://spa.x-ze.cn'
+const IS_OFFICIAL = location.origin==OFFICIAL_ORIGIN
+const OFFICIAL_PACKAGE_PATH = OFFICIAL_ORIGIN+'/package/'
 const SPA_EXT = '.spa'
-let InitParams = new URLSearchParams(location.search)
+const InitParams = new URLSearchParams(location.search)
+
+//自动启动（若未安装则远程加载）
+const AppId = IS_OFFICIAL && location.pathname.startsWith('/app/') && location.pathname.slice(5) || InitParams.get('app_id')
+
 let pkglist
 let detailPanel
 let iconLink = $n('link', {rel:'icon'})
-let btnStyle = {color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', background:'#06b6d4', cursor:'pointer', fontWeight:'600'}
-let defaultIcon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="48" height="48"><rect x="4" y="4" width="26" height="26" rx="4" fill="#4ae" /><rect x="4" y="34" width="26" height="26" rx="4" fill="#4ae" /><rect x="34" y="4" width="26" height="26" rx="4" fill="#6d8" /><rect x="34" y="34" width="26" height="26" rx="4" fill="#4ae" /></svg>')
+const btnStyle = {color:'#fff', border:'none', padding:'8px 10px', borderRadius:'8px', background:'#06b6d4', cursor:'pointer', fontWeight:'600'}
+const defaultIcon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="48" height="48"><rect x="4" y="4" width="26" height="26" rx="4" fill="#4ae" /><rect x="4" y="34" width="26" height="26" rx="4" fill="#4ae" /><rect x="34" y="4" width="26" height="26" rx="4" fill="#6d8" /><rect x="34" y="34" width="26" height="26" rx="4" fill="#4ae" /></svg>')
 const SMALL_SCREEN_QRY = matchMedia('(max-width: 720px)')
 async function init(){
 	document.head.append(iconLink)
@@ -468,15 +473,18 @@ async function init(){
 		pkgmanager.getPackage(autoRun).then(loadApp)
 		return
 	}
-	let to_fetch = getFetch()
-	if(to_fetch.url){
-		fetchApp(to_fetch)
+	let fetch_url = getFetchURL()
+	if(fetch_url){
+		fetchApp(AppId, fetch_url)
 		return
 	}
 
 	document.body.append(MainContainer())
 	displayList(packages)
 	setOnDropFile(document.body, loadApp)
+	
+	if(IS_OFFICIAL)
+		navigator.serviceWorker.register('/sw.js') //缓存框架本体
 }
 function MainContainer(){ // 控制面板容器
 	let cardStyle = { //右侧卡片样式
@@ -614,20 +622,22 @@ function MainContainer(){ // 控制面板容器
 	return $n('div', { id: 'main-ctn', content: [topBar, body] })
 }
 function getAutoRun(packages){
-	let autoRun = InitParams.get('fetch') || InitParams.get('auto_run') || localStorage.getItem('spa-auto-run')
-	//todo: 对于fetch可能需要检查新版本
+	let autoRun = AppId || InitParams.get('auto_run') || localStorage.getItem('spa-auto-run')
+	if(!autoRun)return
+	//todo: 可能需要检查新版本
 	for(let [id, meta] of packages){
 		if(id==autoRun)return id
 	}
 }
-function getFetch(){
-	let id = InitParams.get('fetch')
+function getFetchURL(){
 	let url = InitParams.get('fetch_url')
-	if(id && !url)
-		url = DEFAULT_PACKAGE_URL.replace('%s', id)
-	return {id, url}
+	if(url && url.startsWith('/')) //仅允许相对url
+		return url
+	if(AppId && !url)
+		return OFFICIAL_PACKAGE_PATH+AppId
+	return null
 }
-function fetchApp({id, url}){
+function fetchApp(id, url){ //保证有 url，但不一定有 id
 	document.body.style.textAlign = 'center'
 	applyCSS(`
 		@keyframes pulse {
@@ -640,8 +650,6 @@ function fetchApp({id, url}){
 	let title = $n('h3', {content:'正在远程加载应用'})
 	let progressText = $n('span', {content:'正在连接'})
 	let progressLabel = $n('div', {content:['当前进度：', progressText]})
-	
-	// 创建进度条容器和进度条元素
 	let progressBar = $n('div', {
 		style: {
 			width: '0%',
@@ -904,6 +912,7 @@ function displayList(list){
 function refreshList(){
 	return pkgmanager.list().then(displayList)
 }
+
 applyCSS(`
 *{
 	box-sizing: border-box;
