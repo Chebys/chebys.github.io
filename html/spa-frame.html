@@ -5,11 +5,14 @@
 <title>SPA</title>
 <script>window.onload=()=>{
 
+/*************** 通用工具函数/类 ***************/
+
+let KEY = Symbol('KEY') //用于验证只有框架本体具有的权限
 let indexedDB = globalThis.indexedDB
 delete globalThis.indexedDB
 
 let IDBStorage = (()=>{
-
+	//相比 idb-storage.js 增加了 KEY 验证
 	Promise.fromIDBRequest ||= req =>
 		new Promise((resolve, reject)=>{
 			req.onsuccess = ()=>resolve(req.result)
@@ -79,8 +82,10 @@ let IDBStorage = (()=>{
 				stores: storeNames
 			})
 		}
-		constructor(dbName, storeName){
+		constructor(dbName, storeName, key){
 			//构造前建议先 checkVersion
+			if(key != KEY)
+				throw TypeError("Failed to construct 'IDBStorage': Illegal constructor")
 			this.db = dbName
 			this.store = storeName
 			openDB(this.db, {stores:[this.store]})
@@ -138,30 +143,6 @@ let IDBStorage = (()=>{
 	return IDBStorage
 })();
 
-const VERSION_TAG = '0.5'
-const API_VERSION = 1
-
-async function split(blob){
-	async function findNUL(){
-		let buf_size = 256*1024 //每次读取 256KB
-		let start = 0
-		while(start < blob.size){
-			let end = start+buf_size
-			let buf = await blob.slice(start, end).arrayBuffer()
-			let pos = new Uint8Array(buf).indexOf(0)
-			if(pos >= 0)
-				return start+pos
-			start = end
-		}
-		throw new Error("no '\\0' found")
-	}
-	let pos = await findNUL()
-	let str = await blob.slice(0, pos).text()
-	return {
-		meta: JSON.parse(str),
-		blob: blob.slice(pos+1)
-	}
-}
 function FileInput(accept){
 	let input = document.createElement('input');
 	input.type = 'file';
@@ -211,52 +192,45 @@ function XHRPromise(url, opts={}){
 		xhr.onerror = xhr.ontimeout = reject;
 	});
 }
-async function PackageManager(){
-	//todo: 分离包管理器和应用数据库（后者是运行SPA所必需的，而前者不是）
-	await IDBStorage.checkVersion('SPA-frame', 4, ['meta', 'packages', 'packages-meta'])
-	let packagesStore = new IDBStorage('SPA-frame', 'packages')
-	let packagesMeta = new IDBStorage('SPA-frame', 'packages-meta')
-	let hexes = []
-	for(let i=0; i<256; i++)
-		hexes.push(i.toString(16).padStart(2, '0'))
-	await IDBStorage.checkVersion('SPA-data', 1, hexes)
-	function getDataStore(id){
-		let hash = 0
-		for(let i=0; i<id.length; i++)
-			hash += id.charCodeAt(i)
-		hash %= 256
-		return new IDBStorage('SPA-data', hash.toString(16).padStart(2, '0'))
-	}
-	return {
-		async list(){
-			return packagesMeta.entries()
-		},
-		async addPackage(id, file, meta){
-			meta ||= (await split(file)).meta
-			meta.size = file.size
-			await packagesMeta.set(id, meta)
-			await packagesStore.set(id, file)
-		},
-		async removePackage(id){
-			await packagesMeta.del(id)
-			await packagesStore.del(id)
-			let store = getDataStore(id)
-			let keys = await store.keys()
-			let prefix = id+':'
-			keys = keys.filter(key=>key.startsWith(prefix))
-			await store.delMany(keys)
-		},
-		async getPackage(id){
-			return packagesStore.get(id)
-		},
-		getDataStore
-	}
-}
-let pkgmanager
-let MetaStore = new IDBStorage('SPA-frame', 'meta')
 
-function isCompatible(ver){
-	return ver == API_VERSION
+function applyCSS(text, doc=document){
+	let ss = new CSSStyleSheet
+	ss.replaceSync(text)
+	doc.adoptedStyleSheets.push(ss)
+	return ss
+}
+function importFont(family, font, format='opentype'){
+	if(typeof font == 'string')
+		font = Assets[font]
+	if(!(font instanceof Blob))
+		throw new TypeError('Invalid font: '+font)
+	let url = URL.createObjectURL(font)
+	applyCSS(`
+	@font-face {
+		font-family: "${family}";
+		src: url("${url}") format("${format}");
+	}`)
+}
+function $n(tag, data={}){
+	let el = document.createElement(tag)
+	for(let k in data){
+		let v = data[k]
+		if(k=='content'){
+			if(typeof v=='string')
+				el.textContent = v
+			else if(v instanceof Array)
+				el.append(...v)
+			else
+				throw new TypeError('invalid content', {cause:v})
+		}else if(k=='style' && typeof v=='object'){
+			Object.assign(el.style, v)
+		}else if(k=='data' && typeof v=='object'){
+			Object.assign(el.dataset, v)
+		}else{
+			el[k] = v
+		}
+	}
+	return el
 }
 async function loadBlob(b, type){
 	switch(type){
@@ -274,6 +248,71 @@ async function loadBlob(b, type){
 		}
 		default: throw new Error('invalid preload type: '+type)
 	}
+}
+
+/*************** 包管理器（解析器） ***************/
+//通过 pkgmanager.init() 初始化
+//使用 indexedDB: SPA-frame
+
+const VERSION_TAG = '0.6'
+const API_VERSION = 2
+
+async function split(blob){
+	async function findNUL(){
+		let buf_size = 256*1024 //每次读取 256KB
+		let start = 0
+		while(start < blob.size){
+			let end = start+buf_size
+			let buf = await blob.slice(start, end).arrayBuffer()
+			let pos = new Uint8Array(buf).indexOf(0)
+			if(pos >= 0)
+				return start+pos
+			start = end
+		}
+		throw new Error("no '\\0' found")
+	}
+	let pos = await findNUL()
+	let str = await blob.slice(0, pos).text()
+	return {
+		meta: JSON.parse(str),
+		blob: blob.slice(pos+1)
+	}
+}
+function PackageManager(){
+	let packagesStore, packagesMeta
+	return {
+		async init(){
+			await IDBStorage.checkVersion('SPA-frame', 4, ['meta', 'packages', 'packages-meta'])
+			MetaStore = new IDBStorage('SPA-frame', 'meta', KEY)
+			packagesStore = new IDBStorage('SPA-frame', 'packages', KEY)
+			packagesMeta = new IDBStorage('SPA-frame', 'packages-meta', KEY)
+		},
+		async list(){
+			return packagesMeta.entries()
+		},
+		async addPackage(id, file, meta){
+			meta ||= (await split(file)).meta
+			meta.size = file.size
+			await packagesMeta.set(id, meta)
+			await packagesStore.set(id, file)
+		},
+		async removePackage(id, deleteData=true){
+			await packagesMeta.del(id)
+			await packagesStore.del(id)
+			if(deleteData){
+				//todo: 删除 idb
+			}
+		},
+		async getPackage(id){
+			return packagesStore.get(id)
+		}
+	}
+}
+let pkgmanager = PackageManager()
+let MetaStore
+
+function isCompatible(ver){
+	return ver == API_VERSION
 }
 async function loadApp(file, addPackage=false){
 	let app
@@ -317,7 +356,13 @@ async function loadApp(file, addPackage=false){
 	}
 }
 
-function runApp(app){
+/*************** 应用运行环境 ***************/
+//运行SPA所必需，不依赖包管理器
+//不检查合法性
+function runApp(app, option={}){
+	//问题：副作用难以定位/清理
+	//运行时副作用（全局变量、监听器等）通过重启框架来刷新
+	//持久性副作用包括但不限于：localStorage、IndexedDB、Cookie
 	document.head.innerHTML = ''
 	document.head.append($n('title', {content:app.name}))
 	if(app.icon){
@@ -362,38 +407,22 @@ function runApp(app){
 		}
 	}
 	//修改以下 API 须变更 API_VERSION
-	globalThis.SPA_FRAME = true
 	globalThis.require = makeRequire('') //用于调试
 	globalThis.Assets = app.assets
-	globalThis.applyCSS = applyCSS
-	globalThis.importFont = importFont
-	modules[':spa'] = {$n, runApp, loadBlob, FileInput, DownloadBlob} //todo: 分离 runApp
+	modules[':spa'] = {$n, applyCSS, importFont, loadBlob, FileInput, DownloadBlob}
 	
-	let store = pkgmanager.getDataStore(app.id)
-	let prefix = app.id+':'
-	async function _keys(){
-		let keys = []
-		for(let k of await store.keys())
-			if(k.startsWith(prefix))
-				keys.push(k)
-		return keys
-	}
-	modules[':storage'] = {
-		get(key){ return store.get(prefix+key) },
-		getMany(keys){ return store.getMany(keys.map(k=>prefix+k)) },
-		set(key, val){ return store.set(prefix+key, val) },
-		setMany(entries){ return store.setMany(entries.map(kv=>[prefix+kv[0], kv[1]])) },
-		del(key){ return store.del(prefix+key) },
-		delMany(keys){ return store.delMany(keys.map(k=>prefix+k)) },
-		async keys(){
-			let keys = await _keys()
-			return keys.map(k=>k.slice(prefix.length))
-		},
-		async entries(){
-			let keys = await _keys()
-			let values = await store.getMany(keys)
-			return keys.map((k, i)=>[k.slice(prefix.length), values[i]])
+	let db_name = 'SPA::'+app.id
+	modules[':idb'] = { //一个应用对应一个 idb，方便卸载时删除
+		open: indexedDB.open.bind(indexedDB, db_name),
+		deleteDatabase: indexedDB.deleteDatabase.bind(indexedDB, db_name),
+		checkVersion: IDBStorage.checkVersion.bind(IDBStorage, db_name),
+		storage(name){
+			return new IDBStorage(db_name, name, KEY)
 		}
+	}
+	
+	if(app.id == 'debugger'){
+		modules[':debug'] = {runApp}
 	}
 	
 	try{
@@ -405,47 +434,7 @@ function runApp(app){
 	}
 }
 
-function applyCSS(text, doc=document){
-	let ss = new CSSStyleSheet
-	ss.replaceSync(text)
-	doc.adoptedStyleSheets.push(ss)
-	return ss
-}
-function importFont(family, font, format='opentype'){
-	if(typeof font == 'string')
-		font = Assets[font]
-	if(!(font instanceof Blob))
-		throw new TypeError('Invalid font: '+font)
-	let url = URL.createObjectURL(font)
-	applyCSS(`
-	@font-face {
-		font-family: "${family}";
-		src: url("${url}") format("${format}");
-	}`)
-}
-function $n(tag, data={}){
-	let el = document.createElement(tag)
-	for(let k in data){
-		let v = data[k]
-		if(k=='content'){
-			if(typeof v=='string')
-				el.textContent = v
-			else if(v instanceof Array)
-				el.append(...v)
-			else
-				throw new TypeError('invalid content', {cause:v})
-		}else if(k=='style' && typeof v=='object'){
-			Object.assign(el.style, v)
-		}else if(k=='data' && typeof v=='object'){
-			Object.assign(el.dataset, v)
-		}else{
-			el[k] = v
-		}
-	}
-	return el
-}
-
-//以上为运行SPA所必需
+/*************** 用户接口 ***************/
 
 const OFFICIAL_ORIGIN = 'https://spa.x-ze.cn'
 const IS_OFFICIAL = location.origin==OFFICIAL_ORIGIN
@@ -465,7 +454,7 @@ const SMALL_SCREEN_QRY = matchMedia('(max-width: 720px)')
 async function init(){
 	document.head.append(iconLink)
 	iconLink.href = defaultIcon
-	pkgmanager = await PackageManager()
+	await pkgmanager.init()
 	
 	let packages = await pkgmanager.list()
 	let autoRun = getAutoRun(packages)
@@ -845,7 +834,7 @@ function showDetails(id, meta, cardEl){
 			onclick(){
 				detailPanel.style.transform = 'translateY(-100%)'
 				bg.style.background = 'transparent'
-				setTimeout(()=>{ this.remove() }, 200)
+				setTimeout(()=>{ bg.remove() }, 200)
 			}
 		})
 		detailPanel.style.transform = 'translateY(-100%)'
