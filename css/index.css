@@ -76,6 +76,10 @@ body {
   filter: brightness(1);
 }
 
+#global-topbar .nav{
+	
+}
+
 a.github {
   height: 50px;
   aspect-ratio: 1;

@@ -211,17 +211,12 @@ function importFont(family, font, format='opentype'){
 		src: url("${url}") format("${format}");
 	}`)
 }
-function $n(tag, data={}){
+function $n(tag, data={}, content=null){
 	let el = document.createElement(tag)
 	for(let k in data){
 		let v = data[k]
 		if(k=='content'){
-			if(typeof v=='string')
-				el.textContent = v
-			else if(v instanceof Array)
-				el.append(...v)
-			else
-				throw new TypeError('invalid content', {cause:v})
+			content = v
 		}else if(k=='style' && typeof v=='object'){
 			Object.assign(el.style, v)
 		}else if(k=='data' && typeof v=='object'){
@@ -229,6 +224,14 @@ function $n(tag, data={}){
 		}else{
 			el[k] = v
 		}
+	}
+	if(content!=null){
+		if(typeof content=='string')
+			el.textContent = content
+		else if(content instanceof Array)
+			el.append(...content)
+		else
+			throw new TypeError('invalid content', {cause:content})
 	}
 	return el
 }
@@ -255,7 +258,8 @@ async function loadBlob(b, type){
 //使用 indexedDB: SPA-frame
 
 const VERSION_TAG = '0.6'
-const API_VERSION = 2
+const API_VERSION = 3
+const MIN_VERSION = 2
 
 async function split(blob){
 	async function findNUL(){
@@ -312,7 +316,7 @@ let pkgmanager = PackageManager()
 let MetaStore
 
 function isCompatible(ver){
-	return ver == API_VERSION
+	return MIN_VERSION<=ver && ver<=API_VERSION
 }
 async function loadApp(file, addPackage=false){
 	let app
