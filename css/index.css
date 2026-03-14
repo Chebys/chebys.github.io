@@ -138,7 +138,14 @@ main{
 	padding: 12px 0;
 	border-bottom: 1px solid #eee;
 }
-.item .field { font-weight: 600; }
+.item .field {
+	font-weight: 600;
+	display: flex;
+	gap: 5px;
+}
+.item .field img{
+	height: 20px;
+}
 .item .hidden {
 	position: relative;
 }

@@ -1,4 +1,5 @@
 let MSG = {
+	'-2': '出错了，可能是格式有误',
 	'-1': '啥都没有',
 	'0': '完全错误',
 	'1': '部分正确',
@@ -23,9 +24,13 @@ async function verify(kv, data){
 }
 
 export async function onRequest({env, request}){
-	//const KV = env.KV_transferer
-	let data = await request.json()
-	let flag = await verify(env.KV_about, data)
+	let flag
+	try{
+		let data = await request.json()
+		flag = await verify(env.KV_about, data)
+	}catch(err){
+		flag = -2
+	}
 
 	return new Response(JSON.stringify({
 		flag,
