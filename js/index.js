@@ -51,7 +51,7 @@ function main(){
 		.then(r=>r.json())
 		.then(res=>{
 			if(res.flag==0||res.flag==1)
-				alert('部分信息有误。你可能访问了错误的链接。')
+				alert('当前显示的信息与真实信息不符，你可能访问了错误的链接。')
 		})
 }
 
