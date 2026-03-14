@@ -38,10 +38,7 @@ function mergeInfo(){
 
 function main(){
 	let info = mergeInfo()
-	/* 可以通过
-	fetch('/about-verify', {method:'POST',body:JSON.stringify(info)}).then(r=>r.json()).then(console.log)
-	来检验是否正确 */
-	for(k in infoSetters){
+	for(let k in infoSetters){
 		let data = info[k]
 		let el = document.getElementById('h-'+k)
 		if(data){
@@ -50,6 +47,12 @@ function main(){
 			el.classList.add('hidden')
 		}
 	}
+	fetch('/about-verify', {method:'POST', body:JSON.stringify(info)})
+		.then(r=>r.json())
+		.then(res=>{
+			if(res.flag==0||res.flag==1)
+				alert('部分信息有误。你可能访问了错误的链接。')
+		})
 }
 
 window.addEventListener('load', main)
