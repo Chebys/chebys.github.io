@@ -35,6 +35,9 @@ function mergeInfo(){
 
 function main(){
 	let info = mergeInfo()
+	/* 可以通过
+	fetch('/about-verify', {method:'POST',body:JSON.stringify(info)}).then(r=>r.json()).then(console.log)
+	来检验是否正确 */
 	for(k in infoSetters){
 		let data = info[k]
 		let el = document.getElementById('h-'+k)

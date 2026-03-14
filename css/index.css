@@ -137,8 +137,11 @@ main{
 	justify-content: space-between;
 	padding: 12px 0;
 	border-bottom: 1px solid #eee;
+	overflow-x: clip; /* 最好能允许滚动，但会导致 overflow-y 变成 auto*/
+	overflow-y: visible;
 }
 .item .field {
+	min-width: 90px;
 	font-weight: 600;
 	display: flex;
 	gap: 5px;
@@ -189,7 +192,6 @@ main{
   overflow: hidden;
   border: 1px solid transparent;
 }
-
 .a::before {
   content: '';
   position: absolute;
@@ -201,18 +203,15 @@ main{
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
-
 .a:hover {
   transform: translateY(-8px);
   box-shadow: var(--shadow-hover);
   border-color: var(--primary-light);
   color: var(--primary);
 }
-
 .a:hover::before {
   transform: scaleX(1);
 }
-
 .app-title {
   font-size: 1.1rem;
   font-weight: 600;
@@ -221,7 +220,6 @@ main{
   transition: var(--transition);
   line-height: 1.4;
 }
-
 .a:hover .app-title {
   color: var(--primary);
   transform: scale(1.05);
@@ -233,14 +231,12 @@ main{
   cursor: not-allowed;
   border: 1px dashed var(--gray-light);
 }
-
 .coming-soon:hover {
   transform: none;
   box-shadow: var(--shadow);
   color: var(--gray);
   border-color: var(--gray-light);
 }
-
 .coming-soon .app-title::after {
   content: " (即将上线)";
   font-size: 0.75rem;
@@ -255,7 +251,6 @@ main{
   max-width: 800px;
   padding: 0 20px;
 }
-
 .header-content h1 {
   font-size: 2.5rem;
   font-weight: 700;
@@ -264,7 +259,6 @@ main{
   -webkit-text-fill-color: transparent;
   margin-bottom: 15px;
 }
-
 .header-content p {
   font-size: 1.1rem;
   color: var(--gray);
