@@ -10,6 +10,9 @@ let infoSetters = {
 	name(data){
 		this.textContent = data
 	},
+	phone(data){
+		this.textContent = data
+	},
 	qq(data){
 		this.textContent = data
 	},
