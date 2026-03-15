@@ -16,6 +16,9 @@ let infoSetters = {
 	qq(data){
 		this.textContent = data
 	},
+	tieba(data){
+		showLink(this, 'https://tieba.baidu.com/home/main?un='+data)
+	},
 	pixiv(data){
 		showLink(this, 'https://www.pixiv.net/users/'+data)
 	},
@@ -30,7 +33,10 @@ function mergeInfo(){
 	let params = new URLSearchParams(location.search)
 	for(let k in infoSetters){
 		let v = params.get(k)
-		if(v)data[k] = v //只能是非空字符串
+		if(v)
+			data[k] = v //非空字符串
+		else if(v=='')
+			delete data[k]
 	}
 	localStorage.setItem('about', JSON.stringify(data))
 	return data
@@ -55,4 +61,4 @@ function main(){
 		})
 }
 
-window.addEventListener('load', main)
+window.addEventListener('DOMContentLoaded', main)
