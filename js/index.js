@@ -5,7 +5,6 @@ function showLink(el, href){
 	el.append(a)
 }
 
-
 let infoSetters = {
 	name(data){
 		this.textContent = data
@@ -42,23 +41,20 @@ function mergeInfo(){
 	return data
 }
 
-function main(){
-	let info = mergeInfo()
-	for(let k in infoSetters){
-		let data = info[k]
-		let el = document.getElementById('h-'+k)
-		if(data){
-			infoSetters[k].call(el, data)
-		}else{
-			el.classList.add('hidden')
-		}
-	}
-	fetch('/about-verify', {method:'POST', body:JSON.stringify(info)})
-		.then(r=>r.json())
-		.then(res=>{
-			if(res.flag==0||res.flag==1)
-				alert('当前显示的信息与真实信息不符，你可能访问了错误的链接。')
-		})
+let info = mergeInfo()
+for(let k in infoSetters){
+	let data = info[k]
+	let el = document.getElementById('h-'+k)
+	if(data)
+		infoSetters[k].call(el, data)
+	else
+		el.classList.add('hidden')
 }
 
-window.addEventListener('DOMContentLoaded', main)
+fetch('/about-verify', {method:'POST', body:JSON.stringify(info)})
+	.then(r=>r.json())
+	.then(res=>{
+		if(res.flag==0||res.flag==1)
+			alert('当前显示的信息与真实信息不符，你可能访问了错误的链接。')
+	})
+

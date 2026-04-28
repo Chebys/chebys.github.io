@@ -8,7 +8,7 @@ let Set = class({
 			String(key)
 		return t+str
 	},
-	init(self, list){
+	init(self, list=null){
 		self._ = {}
 		if(list)
 			for(item in list)

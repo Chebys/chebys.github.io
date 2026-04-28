@@ -9,7 +9,7 @@ let Map = class({
 			str = String(key)
 		return t+str
 	},
-	init(self, list){
+	init(self, list=null){
 		self._ = {}
 		if(list)
 			for([key, val] in list)
