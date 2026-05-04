@@ -7,12 +7,12 @@ const htmlHeaders = { 'Content-Type': 'text/html; charset=utf-8' }
 
 async function refreshCache(){
 	let res = await fetch(ORIGIN)
-	if(!res.ok)return
 	let html = await res.text()
-	await store.set('src-cache', {
-		date: Date.now(),
-		html
-	})
+	if(res.ok)
+		await store.set('src-cache', {
+			date: Date.now(),
+			html
+		})
 	return html
 }
 async function cacheFirst(){

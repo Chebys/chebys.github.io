@@ -37,7 +37,7 @@ let IDBStorage = (()=>{
 		let {version, stores} = option
 		if(!dbPromises[name]){
 			let req = indexedDB.open(name, version)
-			req.onupgradeneeded = () => stores && ungrade(req.result, stores)
+			req.onupgradeneeded = () => stores && upgrade(req.result, stores)
 			dbPromises[name] = Promise.fromIDBRequest(req)
 			req.onblocked = ev => req.$reject(new Error('the openDB request is blocked', {cause:ev}))
 			dbPromises[name].catch(err=>{
@@ -69,7 +69,7 @@ let IDBStorage = (()=>{
 		}
 		return db
 	}
-	function ungrade(db, stores){
+	function upgrade(db, stores){
 		//只能在 upgradeneeded 事件使用
 		//创建缺少的store（多余的会忽略）
 		for(let name of stores)
@@ -590,7 +590,7 @@ function MainContainer(){ // 控制面板容器
 			$n('div', {style:{display:'flex', gap:'12px', alignItems:'center'}, content: [
 				$n('div', { style:{display:'flex', gap:'8px', alignItems:'center'}}, [
 					$n('button', {
-						content: '+ 加载应用',
+						content: '+ 安装应用',
 						style: {
 							background: '#0ea5e9',
 							color: '#fff',
@@ -656,7 +656,7 @@ function MainContainer(){ // 控制面板容器
 			$n('div', {style: cardStyle}, [
 				$n('div', {style: {fontWeight:'700', marginBottom:'8px'}}, '使用说明'),
 				$n('ul', {style: {paddingLeft:'20px', color:'#6b7280', fontSize:'13px'}}, [
-					$n('li', {}, '加载应用 选择安装包以安装到本地数据库，安装后无需保留安装包'),
+					$n('li', {}, '安装应用 选择安装包以安装到本地数据库，安装后无需保留安装包'),
 					$n('li', {}, '启动 直接进入应用'),
 					$n('li', {}, '删除 会从本地数据库移除'),
 					$n('li', {}, '导出 从本地数据库导出安装包'),
@@ -805,7 +805,7 @@ function createConfigPopup() {
 	let list
 	let panel = createPopup({
 		style: {
-			background: '#fff', borderRadius: '14px', width: '90%', maxWidth: '380px',
+			background: '#fff', borderRadius: '14px', width: '90vw', maxWidth: '380px',
 			padding: '20px', boxShadow: '0 10px 25px rgba(0,0,0,.15)'
 		},
 		content: [
@@ -842,7 +842,7 @@ function createConfigPopup() {
 				checked: userConfig.get(key),
 				async onchange() {
 					await userConfig.set(key, toggle.checked)
-					refresh()
+					//refresh()
 				}
 			})
 			line.append(text, toggle)
@@ -1117,7 +1117,7 @@ function createInstallPopup() {
 		style: {
 			background: '#fff',
 			borderRadius: '14px',
-			width: '90%',
+			width: '90vw',
 			maxWidth: '400px',
 			padding: '22px',
 			boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
