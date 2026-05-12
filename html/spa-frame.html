@@ -484,6 +484,7 @@ const SMALL_SCREEN_QRY = matchMedia('(max-width: 720px)')
 async function init(){
 	setIcon(ICONS.APP)
 	await pkgmanager.init()
+	await userConfig.init()
 	
 	let packages = await pkgmanager.list()
 	let autoRun = getAutoRun(packages)
@@ -498,7 +499,6 @@ async function init(){
 		return
 	}
 
-	await userConfig.init()
 	applyCSS(`
 *{
 	box-sizing: border-box;
