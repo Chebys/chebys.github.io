@@ -480,6 +480,7 @@ const ICONS = {
 	SETTING: 'data:image/svg+xml,' + encodeURIComponent('<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><style>.ln { stroke: #111111; stroke-width: 6; stroke-linecap: round; fill: none; } .kb { fill: #111111; } .kb-h { fill: #ffffff; }</style><line class="ln" x1="14" y1="25" x2="86" y2="25"/><circle class="kb" cx="36" cy="25" r="9"/><circle class="kb-h" cx="36" cy="25" r="3.5"/><line class="ln" x1="14" y1="50" x2="86" y2="50"/><circle class="kb" cx="64" cy="50" r="9"/><circle class="kb-h" cx="64" cy="50" r="3.5"/><line class="ln" x1="14" y1="75" x2="86" y2="75"/><circle class="kb" cx="46" cy="75" r="9"/><circle class="kb-h" cx="46" cy="75" r="3.5"/></svg>')
 }
 const SMALL_SCREEN_QRY = matchMedia('(max-width: 720px)')
+let UI_INITED = false
 
 async function init(){
 	setIcon(ICONS.APP)
@@ -493,12 +494,7 @@ async function init(){
 		pkgmanager.getPackage(autoRun).then(launchApp)
 		return
 	}
-	let fetch_url = getFetchURL()
-	if(fetch_url){
-		fetchApp(AppId, fetch_url)
-		return
-	}
-
+	
 	applyCSS(`
 *{
 	box-sizing: border-box;
@@ -563,9 +559,16 @@ button:hover{
 }
 `)
 
+	let fetch_url = getFetchURL()
+	if(fetch_url){
+		fetchApp(AppId, fetch_url)
+		return
+	}
+
 	document.body.append(MainContainer())
 	displayList(packages)
 	setOnDropFile(document.body, installApp)
+	UI_INITED = true
 	
 	if(IS_OFFICIAL)
 		navigator.serviceWorker.register('/sw.js', {type:'module'}) //缓存框架本体
@@ -1055,6 +1058,7 @@ function runAppWithAlert(app){
 	}
 }
 async function installApp(file, source='本地文件'){
+	//此时界面可能尚未初始化（例如 fetchApp 时）
 	let dialog = createInstallPopup()
 	dialog.showParse()
 	let app
@@ -1090,7 +1094,8 @@ async function installApp(file, source='本地文件'){
 	if(userConfig.get('autoStartAfterInstall')){
 		runAppWithAlert(app)
 	}else{
-		await refreshList()
+		if(UI_INITED)
+			await refreshList()
 		dialog.showComplete(()=>runAppWithAlert(app))
 	}
 }
