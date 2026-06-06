@@ -365,7 +365,7 @@ function runApp(app, option={}){
 	//修改以下 API 须变更 API_VERSION
 	globalThis.require = makeRequire('') //用于调试
 	globalThis.Assets = app.assets
-	modules[':spa'] = {$n, $, applyCSS, importFont, loadBlob, FileInput, DownloadBlob, decompress}
+	modules[':spa'] = {$n, $, applyCSS, importFont, loadBlob, FileInput, DownloadBlob, decompress} //todo: API_VERSION
 	
 	let db_name = 'SPA::'+app.id
 	modules[':idb'] = { //一个应用对应一个 idb，方便卸载时删除
@@ -391,7 +391,8 @@ const MIN_VERSION = 2
 function isCompatible(ver){
 	return MIN_VERSION<=ver && ver<=API_VERSION
 }
-async function parsePackage(file){
+async function parsePackage(file, onProgress=()=>{}){
+	onProgress('正在提取元数据')
 	let {meta, blob} = await split(file)
 	let {_ver=0, id, name, icon, files, author, desc, main, require_path, compression} = meta
 	if(!id)
@@ -400,23 +401,27 @@ async function parsePackage(file){
 		throw new Error('ID 不合法')
 	if(!isCompatible(_ver))
 		throw new Error('版本不兼容')
-	if(compression)
+	if(compression){
+		onProgress('正在解压')
 		blob = await decompress(blob, compression)
+	}
 	let assets = Object.create(null), scripts = Object.create(null)
-	let index = 0
+	let pos = 0, i = 1
 	for(let {name, size, type, preload} of files){
-		let end = index+size
+		onProgress(`正在提取文件：${i}/${files.length}`)
+		let end = pos+size
 		if(end > blob.size)
 			throw new Error('文件大小不匹配')
-		let data = blob.slice(index, end)
+		let data = blob.slice(pos, end)
 		if(type == 'script'){
 			scripts[name] = await data.text()
 		}else{
 			assets[name] = preload ? await loadBlob(data, preload) : data
 		}
-		index = end
+		pos = end
+		i++
 	}
-	if(index != blob.size)
+	if(pos != blob.size)
 		throw new Error('文件大小不匹配')
 	if(!(main in scripts))
 		throw new Error('缺少主模块')
@@ -470,7 +475,7 @@ let pkgmanager = {
 
 /*************** 用户接口 ***************/
 
-const VERSION_TAG = '1.0'
+const VERSION_TAG = '1.0.1'
 const OFFICIAL_ORIGIN = 'https://spa.x-ze.cn'
 const IS_OFFICIAL = location.origin==OFFICIAL_ORIGIN
 const OFFICIAL_PACKAGE_PATH = OFFICIAL_ORIGIN+'/package-v2/'
@@ -1149,7 +1154,7 @@ async function installApp(file, source='本地文件'){
 	dialog.showParse()
 	let app
 	try{
-		app = await parsePackage(file)
+		app = await parsePackage(file, msg=>dialog.showProgress(msg))
 	}catch(err){
 		dialog.showFail('解析失败：\n'+err.message)
 		console.error(err)
@@ -1239,6 +1244,9 @@ function createInstallPopup() {
 			/* actions.append(createBtn('取消', {
 				background: '#ef4444', color: '#fff'
 			}, () => this.close())) */
+		},
+		showProgress(msg){
+			content.textContent = msg
 		},
 		showInstallConfirm({icon=ICONS.APP, name, id, version='未知', desc='暂无描述', source='未知'}, onConfirm, onCancel) {
 			clear()
