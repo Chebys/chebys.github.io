@@ -475,7 +475,7 @@ let pkgmanager = {
 
 /*************** 用户接口 ***************/
 
-const VERSION_TAG = '1.0.1'
+const VERSION_TAG = '1.0.2'
 const OFFICIAL_ORIGIN = 'https://spa.x-ze.cn'
 const IS_OFFICIAL = location.origin==OFFICIAL_ORIGIN
 const OFFICIAL_PACKAGE_PATH = OFFICIAL_ORIGIN+'/package-v2/'
@@ -540,9 +540,13 @@ body{
 #main-ctn{
 	margin: 0 auto;
 	width: 100%;
+	height: 100vh;
 	box-sizing: border-box;
 	padding: 15px 28px;
 	max-width: 980px;
+	display: flex;
+	flex-direction: column;
+	gap: 15px;
 }
 .package-item{
 	width: 100%;
@@ -610,8 +614,7 @@ function MainContainer(){ // 控制面板容器
 			boxShadow: '0 8px 20px rgba(20,30,40,0.06)',
 			display: 'flex',
 			alignItems: 'center',
-			justifyContent: 'space-between',
-			marginBottom: '18px'
+			justifyContent: 'space-between'
 		},
 		content: [
 			$.img({src: ICONS.APP, style: {width:'56px', height:'56px', borderRadius:'10px', flex:'0 0 auto'}}),
@@ -672,9 +675,9 @@ function MainContainer(){ // 控制面板容器
 			])
 		]
 	})
-	let body = $.div({style: {display:'flex', gap: '18px', alignItems: 'flex-start'}}, [
+	let body = $.div({style: {height: 0, flex: 1, display:'flex', gap: '18px', alignItems: 'flex-start'}}, [
 		// 左侧：包列表
-		$.div({style: {flex: '1 1 0', minWidth: '300px'}}, [
+		$.div({style: {height: '100%', flex: '1 1 0', minWidth: '300px', overflowY: 'auto'}}, [
 			pkglist = $.div({
 				style: {
 					display: 'flex',
