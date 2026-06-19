@@ -312,7 +312,9 @@ function setIcon(href){
 function decompress(blob, format='deflate'){ //返回Promise<Blob>
 	let ds = new DecompressionStream(format)
 	blob.stream().pipeThrough(ds)
-	return new Response(ds.readable).blob()
+	return new Response(ds.readable).blob().catch(err => {
+		throw new Error('Failed to decompress') //否则会报错 Failed to fetch
+	})
 }
 
 /*************** 应用运行环境 ***************/
@@ -385,7 +387,7 @@ function runApp(app, option={}){
 }
 
 /*************** 包解析器 ***************/
-const API_VERSION = 7
+const API_VERSION = 8
 const MIN_VERSION = 2
 
 function isCompatible(ver){
@@ -407,12 +409,12 @@ async function parsePackage(file, onProgress=()=>{}){
 	}
 	let assets = Object.create(null), scripts = Object.create(null)
 	let pos = 0, i = 1
-	for(let {name, size, type, preload} of files){
+	for(let {name, size, type, mimeType, preload} of files){
 		onProgress(`正在提取文件：${i}/${files.length}`)
 		let end = pos+size
 		if(end > blob.size)
 			throw new Error('文件大小不匹配')
-		let data = blob.slice(pos, end)
+		let data = blob.slice(pos, end, mimeType)
 		if(type == 'script'){
 			scripts[name] = await data.text()
 		}else{
