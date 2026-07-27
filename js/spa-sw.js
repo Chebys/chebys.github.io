@@ -1,7 +1,7 @@
 import IDBStorage from 'https://js.x-ze.cn/idb-storage'
 
 const ORIGIN = 'https://spa.x-ze.cn'
-const TTL = 1000*3600*24 //1 天
+const TTL = 1000*3600*48 //2 天
 const store = new IDBStorage('SPA-frame', 'meta')
 const htmlHeaders = { 'Content-Type': 'text/html; charset=utf-8' }
 
