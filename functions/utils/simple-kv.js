@@ -11,7 +11,7 @@ class KVRequestHandler{
 		this.headers = config.headers || defaultHeaders
 	}
 	async handle(req){
-		let params = new URL(request.url).searchParams;
+		let params = new URL(req.url).searchParams;
 		let key = params.get(this.keyname), mode = params.get('mode')
 
 		let res
@@ -20,7 +20,7 @@ class KVRequestHandler{
 		}else if(key){
 			if(mode=='set'){
 				res = 'set succeeded'
-				await this.kv.put(key, request.body)
+				await this.kv.put(key, req.body)
 					.catch(err => {res = err.toString()})
 			}else if(mode=='delete'){
 				await this.kv.delete(key)
