@@ -1,35 +1,6 @@
-export async function onRequest({env, request}){
-	const metakey = 'transferer'
-	const url = new URL(request.url);
-	const get = p=>url.searchParams.get(p)
-	const filename = get('filename'), mode = get('mode')
-	const KV = env.KV_transferer
-	var res
-	
-	if(mode=='getlist'){
-		res = JSON.stringify(await KV.list())
-	}else if(mode=='test'){
-		//
-	}else{
-		if(filename){
-			if(mode=='set'){
-				res = 'set succeeded'
-				await KV.put(filename, request.body)
-					.catch(err => {res = err.toString()})
-			}else if(mode=='delete'){
-				await KV.delete(filename)
-				res = 'delete succeeded'
-			}else{
-				res = await KV.get(filename, 'arrayBuffer')
-			}
-		}else{
-			res = '缺少filename'
-		}
-	}
+import KVRequestHandler from './utils/simple-kv'
 
-	var response = new Response(res)
-	response.headers.set('Access-Control-Allow-Origin', '*')
-	response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
-	response.headers.set('Cache-Control', 'no-store')
-	return response
+export async function onRequest({env, request}){
+	let handler = new KVRequestHandler(env.KV, {keyname:'filename'})
+	return handler.handle(request)
 }
