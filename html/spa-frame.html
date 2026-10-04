@@ -18,6 +18,8 @@
 */
 
 /*************** 通用工具函数/类 ***************/
+const API_VERSION = 9
+const MIN_VERSION = 2
 
 let KEY = Symbol('KEY') //用于验证只有框架本体具有的权限
 let indexedDB = globalThis.indexedDB
@@ -267,7 +269,7 @@ function $n(tag, data={}, content=null){
 	if(content!=null){
 		if(typeof content=='string')
 			el.textContent = content
-		else if(content instanceof Array)
+		else if(Array.isArray(content))
 			el.append(...content)
 		else
 			throw new TypeError('invalid content', {cause:content})
@@ -279,6 +281,20 @@ let $ = new Proxy({}, {
 		return self[key] ||= $n.bind(null, key)
 	}
 })
+function $shadow({tag='div', mode='open', css='', content=null, ...methods}) {
+	let el = document.createElement(tag)
+	let shadow = el.attachShadow({mode})
+	if(css)
+		applyCSS(css, shadow)
+	if(content){
+		if(Array.isArray(content))
+			shadow.append(...content)
+		else
+			throw new TypeError('content must be an array', {cause:content})
+	}
+	Object.assign(el, methods)
+	return el
+}
 async function loadBlob(b, type){
 	switch(type){
 		case 'text': return b.text()
@@ -367,7 +383,7 @@ function runApp(app, option={}){
 	//修改以下 API 须变更 API_VERSION
 	globalThis.require = makeRequire('') //用于调试
 	globalThis.Assets = app.assets
-	modules[':spa'] = {$n, $, applyCSS, importFont, loadBlob, FileInput, DownloadBlob, decompress} //todo: API_VERSION
+	modules[':spa'] = {API_VERSION, $n, $, $shadow, applyCSS, importFont, loadBlob, FileInput, DownloadBlob, decompress}
 	
 	let db_name = 'SPA::'+app.id
 	modules[':idb'] = { //一个应用对应一个 idb，方便卸载时删除
@@ -376,6 +392,17 @@ function runApp(app, option={}){
 		checkVersion: IDBStorage.checkVersion.bind(IDBStorage, db_name),
 		storage(name){
 			return new IDBStorage(db_name, name, KEY)
+		}
+	}
+	globalThis.indexedDB = { //兼容一些未适配框架的应用
+		open(_, ver){ return indexedDB.open(db_name, ver) },
+		deleteDatabase(){ return indexedDB.deleteDatabase(db_name) },
+		cmp(k1, k2){ return indexedDB.cmp(k1, k2) },
+		async databases(){
+			for(let db of await indexedDB.databases())
+				if(db.name==db_name)
+					return [db]
+			return []
 		}
 	}
 	
@@ -387,11 +414,8 @@ function runApp(app, option={}){
 }
 
 /*************** 包解析器 ***************/
-const API_VERSION = 8
-const MIN_VERSION = 2
-
 function isCompatible(ver){
-	return MIN_VERSION<=ver && ver<=API_VERSION
+	return ver=='compatible' || MIN_VERSION<=ver && ver<=API_VERSION
 }
 async function parsePackage(file, onProgress=()=>{}){
 	onProgress('正在提取元数据')
@@ -477,7 +501,7 @@ let pkgmanager = {
 
 /*************** 用户接口 ***************/
 
-const VERSION_TAG = '1.0.2'
+const VERSION_TAG = '1.0.4'
 const OFFICIAL_ORIGIN = 'https://spa.x-ze.cn'
 const IS_OFFICIAL = location.origin==OFFICIAL_ORIGIN
 const OFFICIAL_PACKAGE_PATH = OFFICIAL_ORIGIN+'/package-v2/'
@@ -845,7 +869,11 @@ let userConfig = {
 	}
 }
 function createConfigPopup() {
-	let list
+	let list = $.div()
+	let btnStyle = {
+		marginTop: '14px', width: '100%', padding: '10px',
+		border: 'none', borderRadius: '8px', color: '#fff'
+	}
 	let panel = createPopup({
 		style: {
 			background: '#fff', borderRadius: '14px', width: '90vw', maxWidth: '380px',
@@ -856,13 +884,18 @@ function createConfigPopup() {
 				content: '设置',
 				style: { fontWeight: 700, fontSize: '16px', marginBottom: '14px' }
 			}),
-			list = $.div(),
+			list,
+			$.button({
+				content: '清除框架缓存',
+				style: { ...btnStyle, background: '#d66', display: IS_OFFICIAL?'':'none' },
+				async onclick() {
+					await MetaStore.del('src-cache')
+					alert('已清除')
+				}
+			}),
 			$.button({
 				content: '关闭',
-				style: {
-					marginTop: '14px', width: '100%', padding: '10px',
-					border: 'none', borderRadius: '8px', background: '#06b6d4', color: '#fff'
-				},
+				style: { ...btnStyle, background: '#06b6d4' },
 				onclick() { panel.close() }
 			})
 		]
@@ -1057,15 +1090,15 @@ function showUpdateConfirm(newMeta) {
 		popup.append(
 			$.div({ style: 'font-size: 18px; font-weight: bold; color: #1f2937; margin-bottom: 12px;' }, '发现新版本！'),
 			$.div({ style: 'display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; font-size: 14px; color: #4b5563;' }, [
-                $.div({ style: 'display: flex; align-items: center; gap: 8px;' }, [
-                    $.span({}, '最新版本:'),
-                    $.span({ style: 'background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600;' }, newMeta.version)
-                ]),
-                $.div({ style: 'display: flex; align-items: center; gap: 8px;' }, [
-                    $.span({}, '文件大小:'),
-                    $.span({ style: 'color: #374151; font-weight: 500;' }, getSizeText(newMeta.size))
-                ])
-            ]),
+				$.div({ style: 'display: flex; align-items: center; gap: 8px;' }, [
+					$.span({}, '最新版本:'),
+					$.span({ style: 'background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600;' }, newMeta.version)
+				]),
+				$.div({ style: 'display: flex; align-items: center; gap: 8px;' }, [
+					$.span({}, '文件大小:'),
+					$.span({ style: 'color: #374151; font-weight: 500;' }, getSizeText(newMeta.size))
+				])
+			]),
 			$.div({ style: 'display: flex; justify-content: flex-end; gap: 12px;' }, [
 				$.button({
 					content: '暂不更新',
