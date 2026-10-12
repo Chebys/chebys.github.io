@@ -8,7 +8,6 @@
 :root {
   --navy-900: #0f172a;
   --navy-800: #1e293b;
-  --slate-700: #334155;
   --slate-600: #475569;
   --slate-500: #64748b;
   --slate-400: #94a3b8;
@@ -17,7 +16,6 @@
   --slate-100: #f1f5f9;
   --slate-50:  #f8fafc;
 
-  --accent:      #2563eb;
   --accent-700:  #1d4ed8;
   --accent-soft: #eff6ff;
   --accent-line: #dbeafe;
@@ -26,14 +24,10 @@
   --danger-soft: #fef2f2;
   --danger-line: #fecaca;
 
-  --success: #059669;
-
-  --radius: 12px;
-  --radius-sm: 9px;
+  --radius: 8px;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, .05);
-  --shadow-md: 0 1px 3px rgba(15, 23, 42, .05), 0 18px 34px -22px rgba(15, 23, 42, .30);
-  --shadow-lift: 0 1px 3px rgba(15, 23, 42, .06), 0 16px 32px -22px rgba(37, 99, 235, .55);
-  --ease: .18s cubic-bezier(.4, 0, .2, 1);
+  --shadow-md: 0 1px 3px rgba(15, 23, 42, .05), 0 10px 20px -16px rgba(15, 23, 42, .28);
+  --ease: .15s cubic-bezier(.4, 0, .2, 1);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,75 +39,77 @@ body {
                "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   background: #eef2f7;
   color: var(--navy-900);
-  line-height: 1.5;
+  /* 字号保持正常可读，仅通过间距与内边距收紧 */
+  font-size: 15px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 
 button { font-family: inherit; }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 6px;
+  outline: 2px solid var(--accent-700);
+  outline-offset: 1px;
+  border-radius: 5px;
 }
 
-/* ---------------------------------------------------------------- 布局 */
+/* ================================================================ 布局 */
 
 #container {
   height: 100vh;
   width: 100%;
-  max-width: 1180px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 28px 24px;
+  padding: 12px 14px;
   display: flex;
   align-items: stretch;
-  gap: 22px;
+  gap: 12px;
 }
 
-/* ---------------------------------------------------------------- 侧栏 */
+/* ================================================================ 侧栏 */
 
 #panel {
-  flex: 0 0 300px;
-  width: 300px;
+  flex: 0 0 260px;
+  width: 260px;
   background: #fff;
   border: 1px solid var(--slate-200);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  padding: 22px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .panel-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .brand-mark {
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: linear-gradient(140deg, #1e293b 0%, #0f172a 100%);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 14px -8px rgba(15, 23, 42, .8);
+  box-shadow: 0 4px 10px -6px rgba(15, 23, 42, .85);
 }
 
-.brand-mark svg { width: 20px; height: 20px; }
+.brand-mark svg { width: 16px; height: 16px; }
 
 .brand { min-width: 0; }
 
 .brand h1 {
-  font-size: .98rem;
+  font-size: 1rem;
   font-weight: 650;
   letter-spacing: .01em;
   color: var(--navy-900);
+  white-space: nowrap;
 }
 
 .brand p {
@@ -122,25 +118,26 @@ button { font-family: inherit; }
   letter-spacing: .07em;
   text-transform: uppercase;
   color: var(--slate-400);
+  white-space: nowrap;
 }
 
-/* ---------------------------------------------------------------- 状态 */
+/* ================================================================ 状态区 */
 
 .status-container {
   background: var(--slate-50);
   border: 1px solid var(--slate-200);
-  border-radius: 10px;
-  padding: 14px 16px 16px;
+  border-radius: 7px;
+  padding: 10px 12px 11px;
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: 7px;
 }
 
 .status-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   font-size: .8rem;
 }
 
@@ -161,26 +158,16 @@ button { font-family: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
-#status_sign { transition: color var(--ease); }
-#status_sign[data-status="done"]         { color: var(--success); }
-#status_sign[data-status="uploading"],
-#status_sign[data-status="downloading"]  { color: var(--accent-700); }
-#status_sign[data-status="deleting"]     { color: var(--danger); }
-#status_sign[data-status="getting_list"],
-#status_sign[data-status="error"]        { color: var(--slate-500); }
-
 #progress_sign {
-  font-size: .76rem;
+  font-size: .78rem;
   color: var(--slate-600);
-  font-weight: 600;
 }
 
 .progress-bar {
-  height: 6px;
+  height: 5px;
   background: var(--slate-200);
   border-radius: 999px;
   overflow: hidden;
-  margin-top: 1px;
 }
 
 .progress-fill {
@@ -188,112 +175,118 @@ button { font-family: inherit; }
   width: 0%;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent-700), #3b82f6);
-  transition: width .35s cubic-bezier(.4, 0, .2, 1);
+  transition: width .3s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* ---------------------------------------------------------------- 上传按钮 */
+/* ================================================================ 上传按钮 */
 
 #upload {
   width: 100%;
   border: none;
-  border-radius: 10px;
-  padding: 12px 18px;
+  border-radius: 7px;
+  padding: 9px 12px;
   background: var(--navy-900);
   color: #fff;
-  font-size: .88rem;
+  font-size: .85rem;
   font-weight: 600;
-  letter-spacing: .01em;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 7px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(15, 23, 42, .22);
-  transition: background var(--ease), box-shadow var(--ease), transform .08s ease;
+  transition: background var(--ease), box-shadow var(--ease), transform .07s ease;
 }
 
-#upload svg { width: 16px; height: 16px; }
+#upload svg { width: 14px; height: 14px; flex: 0 0 auto; }
 
 #upload:hover {
   background: var(--navy-800);
-  box-shadow: 0 10px 22px -12px rgba(15, 23, 42, .85);
+  box-shadow: 0 8px 16px -10px rgba(15, 23, 42, .9);
 }
 
 #upload:active { transform: translateY(1px); }
 
 .hint {
   margin-top: auto;
-  font-size: .7rem;
-  line-height: 1.7;
+  font-size: .72rem;
+  line-height: 1.55;
   color: var(--slate-400);
   text-align: center;
 }
 
-/* ---------------------------------------------------------------- 文件列表 */
+/* ================================================================ 文件列表 */
 
 #filelist {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-right: 6px;
+  gap: 6px;
 }
 
+/* ---------- 卡片：单行高度约 44px ---------- */
+
 .file-container {
+  flex: 0 0 auto;
   background: #fff;
   border: 1px solid var(--slate-200);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  padding: 14px 16px;
+  /* 垂直内边距很小，靠行高撑出可读高度 */
+  padding: 5px 12px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  transition: border-color var(--ease), box-shadow var(--ease), transform var(--ease);
+  gap: 12px;
+  transition: border-color var(--ease), background var(--ease), box-shadow var(--ease);
 }
 
 .file-container:hover {
   border-color: var(--accent-line);
-  box-shadow: var(--shadow-lift);
-  transform: translateY(-2px);
+  background: #fbfdff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
 }
 
-.file-main {
+/* 左侧信息区（JS 生成的是「匿名 div > .file-icon + .file-name」） */
+.file-container > div:first-child {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
+/* ---------- 图标：小而不失辨识度 ---------- */
+
 .file-icon {
-  flex: 0 0 38px;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-sm);
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   background: var(--slate-100);
   border: 1px solid var(--slate-200);
-  color: var(--slate-500);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--ease), color var(--ease), border-color var(--ease);
+  font-size: .9rem;
+  line-height: 1;
+  transition: background var(--ease), border-color var(--ease);
 }
-
-.file-icon svg { width: 18px; height: 18px; }
 
 .file-container:hover .file-icon {
   background: var(--accent-soft);
   border-color: var(--accent-line);
-  color: var(--accent-700);
 }
 
-.file-meta { min-width: 0; }
+/* ---------- 文件名：字号正常，仅做溢出省略 ---------- */
 
 .file-name {
-  font-size: .92rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: .87rem;
   font-weight: 600;
   color: var(--navy-900);
   overflow: hidden;
@@ -301,34 +294,38 @@ button { font-family: inherit; }
   white-space: nowrap;
 }
 
-.file-sub {
-  font-size: .72rem;
-  color: var(--slate-400);
-  letter-spacing: .02em;
-}
+/* ---------- 操作区：默认淡出，悬停显现（进一步省视觉空间） ---------- */
 
 .file-actions {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
+  opacity: .55;
+  transition: opacity var(--ease);
+}
+
+.file-container:hover .file-actions,
+.file-container:focus-within .file-actions {
+  opacity: 1;
 }
 
 .file-actions button {
-  border-radius: 8px;
-  padding: 7px 14px;
+  border-radius: 6px;
+  padding: 4px 11px;
   font-size: .78rem;
   font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   cursor: pointer;
   border: 1px solid transparent;
   transition: background var(--ease), color var(--ease),
-              border-color var(--ease), box-shadow var(--ease);
+              border-color var(--ease);
 }
-
-.file-actions button svg { width: 14px; height: 14px; }
 
 .btn-download {
   background: var(--accent-soft);
@@ -340,7 +337,6 @@ button { font-family: inherit; }
   background: var(--accent-700);
   border-color: var(--accent-700);
   color: #fff;
-  box-shadow: 0 8px 18px -12px rgba(29, 78, 216, .95);
 }
 
 .btn-delete {
@@ -355,71 +351,70 @@ button { font-family: inherit; }
   color: var(--danger);
 }
 
-/* ---------------------------------------------------------------- 空状态 */
+/* ================================================================ 空状态 */
 
 .empty-state {
   flex: 1 1 auto;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 60px 24px;
+  padding: 40px 20px;
   background: #fff;
   border: 1px dashed var(--slate-300);
   border-radius: var(--radius);
   color: var(--slate-400);
 }
 
-.empty-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: var(--slate-100);
+.empty-state > span {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--slate-400);
-  margin-bottom: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: var(--slate-100);
+  font-size: 1.3rem;
+  line-height: 1;
+  margin-bottom: 12px;
 }
 
-.empty-icon svg { width: 26px; height: 26px; }
-
 .empty-state h3 {
-  font-size: .98rem;
+  font-size: .9rem;
   font-weight: 600;
   color: var(--slate-600);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .empty-state p {
-  font-size: .8rem;
+  font-size: .78rem;
   color: var(--slate-400);
 }
 
-/* ---------------------------------------------------------------- 滚动条 */
+/* ================================================================ 滚动条 */
 
-#filelist::-webkit-scrollbar { width: 8px; }
+#filelist::-webkit-scrollbar { width: 6px; }
 
 #filelist::-webkit-scrollbar-track { background: transparent; }
 
 #filelist::-webkit-scrollbar-thumb {
   background: var(--slate-300);
   border-radius: 999px;
-  border: 2px solid #eef2f7;
 }
 
 #filelist::-webkit-scrollbar-thumb:hover { background: var(--slate-400); }
 
-/* ---------------------------------------------------------------- 响应式 */
+/* ================================================================ 响应式 */
 
-@media (max-width: 860px) {
+@media (max-width: 780px) {
   #container {
     height: auto;
     min-height: 100vh;
     flex-direction: column;
-    padding: 20px 16px;
-    gap: 16px;
+    padding: 12px;
+    gap: 10px;
   }
 
   #panel {
@@ -429,16 +424,13 @@ button { font-family: inherit; }
 
   .hint { margin-top: 0; }
 
-  #filelist { overflow: visible; padding-right: 0; }
-
-  .file-container { flex-wrap: wrap; }
-
-  .file-main { flex: 1 1 100%; }
-
-  .file-actions {
-    width: 100%;
-    justify-content: flex-end;
+  #filelist {
+    overflow: visible;
+    padding-right: 0;
   }
+
+  /* 窄屏：操作区恢复常显，因为触摸没有 hover */
+  .file-actions { opacity: 1; }
 }
 </style>
 <script type="module" src="/js/transferer.js"></script>
