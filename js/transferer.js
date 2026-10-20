@@ -2,6 +2,8 @@ import {XHRPromise, downloadBlob} from '/js/modules/downloadUtils.js'
 import FileInput from '/js/modules/offscreen-file-input.js'
 
 const KV_URL = '/kv-transferer'
+const MAX_SIZE = 1024**2 * 20
+
 function KV({mode, filename, body, onProgress, onUploadProgress}){
 	var furl=KV_URL+'?', method='POST'
 	if(mode)furl += '&mode='+mode
@@ -119,6 +121,11 @@ function fileContainer(filename){
 						getFile(filename)
 							.then(blob=>downloadBlob(blob, filename))
 							.then(()=>setStatus('done'))
+							.catch(err => {
+								console.error('下载失败', err)
+								alert('下载失败：' + (err && err.message || '未知错误'))
+								setStatus('done')
+							})
 					}
 				}),
 				$n('button', {
@@ -134,6 +141,11 @@ function fileContainer(filename){
 						delFile(filename)
 							.then(console.log)
 							.then(refreshList)
+							.catch(err => {
+								console.error('删除失败', err)
+								alert('删除失败：' + (err && err.message || '未知错误'))
+								setStatus('done')
+							})
 					}
 				})
 			]})
@@ -161,21 +173,137 @@ function refreshList(){
 	return getList().then(refresh)
 }
 
-async function upload(){
+/* ---------------- 上传（按钮与拖放共用） ---------------- */
+
+function uploadFile(file){
+	if(!file)return
 	if(isOccupied()){
 		alert(status)
 		return
 	}
-	let file = await FileInput()
-	if(file.size > 1024**2 * 20){
+	if(file.size > MAX_SIZE){
 		alert('文件不能超过20Mb')
 		return
 	}
-	setStatus('uploading')
-	await setFile(file.name, file)
-	refreshList()
+	setStatus('uploading', file.name)
+	setFile(file.name, file)
+		.then(refreshList)
+		.catch(err => {
+			console.error('上传失败', err)
+			alert('上传失败：' + (err && err.message || '未知错误'))
+			setStatus('done')
+		})
 }
 
-refreshList()
+async function pickAndUpload(){
+	if(isOccupied()){
+		alert(status)
+		return
+	}
+	let file
+	try {
+		file = await FileInput()
+	} catch (err) {
+		console.error('选择文件失败', err)
+		return
+	}
+	uploadFile(file)
+}
 
-document.getElementById('upload').addEventListener('click', upload)
+/* ---------------- 拖放上传 ---------------- */
+
+let dragDepth = 0
+
+function isFileDrag(e){
+	const types = e.dataTransfer && e.dataTransfer.types
+	if(!types)return false
+	for(let i=0; i<types.length; i++)
+		if(types[i] == 'Files')return true
+	return false
+}
+
+window.addEventListener('dragenter', e => {
+	if(!isFileDrag(e))return
+	e.preventDefault()
+	dragDepth++
+	document.body.classList.add('is-dragging')
+})
+
+window.addEventListener('dragover', e => {
+	if(!isFileDrag(e))return
+	e.preventDefault()
+	if(e.dataTransfer)e.dataTransfer.dropEffect = 'copy'
+})
+
+window.addEventListener('dragleave', e => {
+	if(!isFileDrag(e))return
+	dragDepth = Math.max(0, dragDepth - 1)
+	if(dragDepth === 0)document.body.classList.remove('is-dragging')
+})
+
+window.addEventListener('drop', e => {
+	if(!isFileDrag(e))return
+	e.preventDefault()
+	dragDepth = 0
+	document.body.classList.remove('is-dragging')
+
+	const files = e.dataTransfer.files
+	if(!files || !files.length)return
+	if(files.length > 1){
+		alert('一次只能上传一个文件')
+		return
+	}
+	uploadFile(files[0])
+})
+
+/* ---------------- 移动端底部面板 ---------------- */
+
+function initMobilePanel(){
+	const panel = document.getElementById('panel')
+	const header = document.getElementById('panel-header')
+	const toggle = document.getElementById('panel-toggle')
+	const summary = document.getElementById('panel-summary')
+	const statusSign = document.getElementById('status_sign')
+	if(!panel || !header || !toggle)return
+
+	const isMobile = () => window.matchMedia('(max-width: 780px)').matches
+
+	function togglePanel(){
+		const expanded = panel.classList.toggle('is-expanded')
+		toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false')
+	}
+
+	toggle.addEventListener('click', e => {
+		e.stopPropagation()
+		togglePanel()
+	})
+
+	header.addEventListener('click', e => {
+		if(!isMobile())return
+		if(e.target.closest('.panel-toggle'))return
+		togglePanel()
+	})
+
+	if(summary && statusSign){
+		const sync = () => {
+			const t = statusSign.textContent || ''
+			const i = t.indexOf(':')
+			summary.textContent = i > 0 ? t.slice(0, i) : t
+		}
+		new MutationObserver(sync).observe(statusSign, {
+			childList: true, characterData: true, subtree: true
+		})
+		sync()
+	}
+}
+
+/* ---------------- 启动 ---------------- */
+
+initMobilePanel()
+
+refreshList().catch(err => {
+	console.error('加载列表失败', err)
+	setStatus('done')
+})
+
+document.getElementById('upload').addEventListener('click', pickAndUpload)

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <title>文件中转站</title>
 <style>
 :root {
@@ -39,7 +39,6 @@ body {
                "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   background: #eef2f7;
   color: var(--navy-900);
-  /* 字号保持正常可读，仅通过间距与内边距收紧 */
   font-size: 15px;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
@@ -102,7 +101,7 @@ button { font-family: inherit; }
 
 .brand-mark svg { width: 16px; height: 16px; }
 
-.brand { min-width: 0; }
+.brand { flex: 1 1 auto; min-width: 0; }
 
 .brand h1 {
   font-size: 1rem;
@@ -110,6 +109,8 @@ button { font-family: inherit; }
   letter-spacing: .01em;
   color: var(--navy-900);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand p {
@@ -119,6 +120,60 @@ button { font-family: inherit; }
   text-transform: uppercase;
   color: var(--slate-400);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 状态摘要 + 折叠按钮：仅移动端出现 */
+.panel-summary {
+  display: none;
+  flex: 0 1 auto;
+  max-width: 92px;
+  font-size: .74rem;
+  font-weight: 600;
+  color: var(--slate-500);
+  background: var(--slate-100);
+  border-radius: 999px;
+  padding: 2px 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-toggle {
+  display: none;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--slate-200);
+  background: #fff;
+  color: var(--slate-500);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease), border-color var(--ease);
+}
+
+.panel-toggle:hover {
+  background: var(--slate-50);
+  color: var(--navy-800);
+  border-color: var(--slate-300);
+}
+
+.panel-toggle svg {
+  width: 16px;
+  height: 16px;
+  transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+}
+
+#panel.is-expanded .panel-toggle svg { transform: rotate(180deg); }
+
+/* 面板主体：桌面端直接展示 */
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* ================================================================ 状态区 */
@@ -225,10 +280,11 @@ button { font-family: inherit; }
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  padding-right: 4px;
 }
 
-/* ---------- 卡片：单行高度约 44px ---------- */
+/* ---------- 卡片：单行约 44px ---------- */
 
 .file-container {
   flex: 0 0 auto;
@@ -236,7 +292,6 @@ button { font-family: inherit; }
   border: 1px solid var(--slate-200);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  /* 垂直内边距很小，靠行高撑出可读高度 */
   padding: 5px 12px;
   display: flex;
   align-items: center;
@@ -250,7 +305,6 @@ button { font-family: inherit; }
   box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
 }
 
-/* 左侧信息区（JS 生成的是「匿名 div > .file-icon + .file-name」） */
 .file-container > div:first-child {
   flex: 1 1 auto;
   min-width: 0;
@@ -258,8 +312,6 @@ button { font-family: inherit; }
   align-items: center;
   gap: 10px;
 }
-
-/* ---------- 图标：小而不失辨识度 ---------- */
 
 .file-icon {
   flex: 0 0 28px;
@@ -281,8 +333,6 @@ button { font-family: inherit; }
   border-color: var(--accent-line);
 }
 
-/* ---------- 文件名：字号正常，仅做溢出省略 ---------- */
-
 .file-name {
   flex: 1 1 auto;
   min-width: 0;
@@ -293,8 +343,6 @@ button { font-family: inherit; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* ---------- 操作区：默认淡出，悬停显现（进一步省视觉空间） ---------- */
 
 .file-actions {
   flex: 0 0 auto;
@@ -323,8 +371,7 @@ button { font-family: inherit; }
   gap: 4px;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background var(--ease), color var(--ease),
-              border-color var(--ease);
+  transition: background var(--ease), color var(--ease), border-color var(--ease);
 }
 
 .btn-download {
@@ -393,6 +440,73 @@ button { font-family: inherit; }
   color: var(--slate-400);
 }
 
+/* ================================================================ 拖放遮罩 */
+
+#drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(238, 242, 247, .78);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s ease, visibility .15s ease;
+  pointer-events: none;
+}
+
+body.is-dragging #drop-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+.drop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 34px 54px;
+  background: #fff;
+  border: 2px dashed var(--accent-700);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -24px rgba(15, 23, 42, .35);
+  text-align: center;
+  transform: scale(.97);
+  transition: transform .18s cubic-bezier(.4, 0, .2, 1);
+}
+
+body.is-dragging .drop-card {
+  transform: scale(1);
+}
+
+.drop-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.drop-icon svg { width: 24px; height: 24px; }
+
+.drop-card h3 {
+  font-size: 1.1rem;
+  font-weight: 650;
+  color: var(--navy-900);
+}
+
+.drop-card p {
+  font-size: .85rem;
+  color: var(--slate-500);
+}
+
 /* ================================================================ 滚动条 */
 
 #filelist::-webkit-scrollbar { width: 6px; }
@@ -406,20 +520,57 @@ button { font-family: inherit; }
 
 #filelist::-webkit-scrollbar-thumb:hover { background: var(--slate-400); }
 
-/* ================================================================ 响应式 */
+/* ================================================================ 移动端：面板移到底部并可折叠 */
 
 @media (max-width: 780px) {
   #container {
     height: auto;
     min-height: 100vh;
     flex-direction: column;
-    padding: 12px;
+    padding: 12px 0 calc(78px + env(safe-area-inset-bottom, 0px));
     gap: 10px;
   }
 
+  /* 面板固定在底部，作为抽屉 */
   #panel {
-    flex: 0 0 auto;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
     width: 100%;
+    flex: 0 0 auto;
+    border-radius: 14px 14px 0 0;
+    border-bottom: none;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -10px 30px -18px rgba(15, 23, 42, .35);
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+  }
+
+  .panel-header {
+    cursor: pointer;
+  }
+
+  .panel-summary,
+  .panel-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 收起：主体高度归零；展开：高度恢复 */
+  .panel-body {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height .28s ease, opacity .18s ease;
+  }
+
+  #panel.is-expanded .panel-body {
+    max-height: 52vh;
+    opacity: 1;
+    overflow-y: auto;
   }
 
   .hint { margin-top: 0; }
@@ -429,8 +580,9 @@ button { font-family: inherit; }
     padding-right: 0;
   }
 
-  /* 窄屏：操作区恢复常显，因为触摸没有 hover */
   .file-actions { opacity: 1; }
+
+  .drop-card { padding: 28px 36px; }
 }
 </style>
 <script type="module" src="/js/transferer.js"></script>
@@ -439,7 +591,7 @@ button { font-family: inherit; }
 <div id="container">
 
   <aside id="panel">
-    <div class="panel-header">
+    <div class="panel-header" id="panel-header">
       <div class="brand-mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
              stroke-linecap="round" stroke-linejoin="round">
@@ -450,37 +602,64 @@ button { font-family: inherit; }
         <h1>文件中转站</h1>
         <p>Temporary Transfer</p>
       </div>
+      <span class="panel-summary" id="panel-summary">加载中</span>
+      <button class="panel-toggle" id="panel-toggle" type="button"
+              aria-expanded="false" aria-controls="panel-body" aria-label="展开或收起面板">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="m6 9 6 6 6-6"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="status-container">
-      <div class="status-row">
-        <span class="status-label">当前状态</span>
-        <span class="status-value" id="status_sign">加载中</span>
+    <div class="panel-body" id="panel-body">
+      <div class="status-container">
+        <div class="status-row">
+          <span class="status-label">当前状态</span>
+          <span class="status-value" id="status_sign">加载中</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">传输进度</span>
+          <span class="status-value" id="progress_sign">无任务</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress_bar"></div>
+        </div>
       </div>
-      <div class="status-row">
-        <span class="status-label">传输进度</span>
-        <span class="status-value" id="progress_sign">无任务</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" id="progress_bar"></div>
-      </div>
-    </div>
 
-    <button id="upload" type="button">
+      <button id="upload" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4"/>
+          <path d="m7 9 5-5 5 5"/>
+          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+        </svg>
+        上传新文件
+      </button>
+
+      <p class="hint">单文件不超过 20 MB<br>支持拖放上传 · 列表更新可能有延迟</p>
+    </div>
+  </aside>
+
+  <main id="filelist"></main>
+
+</div>
+
+<!-- 拖放遮罩 -->
+<div id="drop-overlay" aria-hidden="true">
+  <div class="drop-card">
+    <div class="drop-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
            stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 16V4"/>
         <path d="m7 9 5-5 5 5"/>
         <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
       </svg>
-      上传新文件
-    </button>
-
-    <p class="hint">单文件不超过 20 MB<br>列表更新可能有延迟</p>
-  </aside>
-
-  <main id="filelist"></main>
-
+    </div>
+    <h3>释放以上传文件</h3>
+    <p>单个文件，不超过 20 MB</p>
+  </div>
 </div>
+</script>
 </body>
 </html>
