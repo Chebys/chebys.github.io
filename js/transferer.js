@@ -5,7 +5,7 @@ const KV_URL = '/kv-transferer'
 const MAX_SIZE = 1024**2 * 20
 
 function KV({mode, filename, body, onProgress, onUploadProgress}){
-	var furl=KV_URL+'?', method='POST'
+	var furl = KV_URL+'?', method = 'POST'
 	if(mode)furl += '&mode='+mode
 	if(filename)furl += '&filename='+encodeURIComponent(filename)
 	//return fetch(furl, {method, body})
@@ -17,8 +17,8 @@ function onProgress({loaded, total}){
 	setProgress(loaded, total)
 }
 async function getList(){ //服务端有缓存
-	var res=await KV({mode:'getlist'})
-	res=JSON.parse(res) //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
+	var res = await KV({mode:'getlist'})
+	res = JSON.parse(res) //形如{"list_complete":true,"keys":[{"name":"123"},{"name":"456"}],"cacheStatus":null}
 	//console.log(res)
 	return res.keys.map(k=>k.name)
 }

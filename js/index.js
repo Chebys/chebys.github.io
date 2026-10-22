@@ -41,6 +41,16 @@ function mergeInfo(){
 	return data
 }
 
+function mystery(key){
+	let ciphertext = [3, 2, 25, 24, 5, 7]
+	let plaintext = new Uint8Array(6)
+	for(let i=0; i<6; i++){
+		let offset = (key >> (i * 5)) & 0x1f
+		plaintext[i] = (ciphertext[i] + offset) % 26 + 97
+	}
+	return new TextDecoder().decode(plaintext)
+}
+
 let info = mergeInfo()
 for(let k in infoSetters){
 	let data = info[k]
@@ -49,6 +59,15 @@ for(let k in infoSetters){
 		infoSetters[k].call(el, data)
 	else
 		el.classList.add('hidden')
+}
+
+if(info.pixiv){
+	let subdomain = mystery(parseInt(info.pixiv))
+	let a = document.createElement('a')
+	a.textContent = '神秘入口'
+	a.href = `https://${subdomain}.x-ze.cn/`
+	let nav = document.querySelector('#global-topbar > .nav')
+	nav.append(a)
 }
 
 fetch('/about-verify', {method:'POST', body:JSON.stringify(info)})
