@@ -1,78 +1,354 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width">
 <title>Jua</title>
 <style>
+:root{
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e6e8ec;
+  --border-strong: #d6dae0;
+  --text: #1c1f23;
+  --text-muted: #6b7280;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-ring: rgba(37,99,235,.18);
+  --danger-soft: #fef4f4;
+  --danger-border: #f6d5d5;
+  --danger-text: #b42318;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
 *{
   box-sizing: border-box;
+}
+html, body{
+  height: 100%;
 }
 body{
   margin: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* ---------- 顶栏 ---------- */
 #topbar{
-  height: 40px;
-  padding: 0 20px;
-  border-bottom: 1px solid #ccc;
-  font-size: 20px;
-  font-weight: bold;
+  flex: none;
+  height: 42px;
+  padding: 0 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+#topbar > span{
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 #topbar a.github{
-  height: 80%;
-  aspect-ratio: 1;
-  background: url(/icon/github.svg) center/contain;
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: url(/icon/github.svg) center/15px 15px no-repeat;
+  opacity: .6;
+  transition: opacity .15s ease, background-color .15s ease;
 }
+#topbar a.github:hover{
+  opacity: 1;
+  background-color: #f1f3f6;
+}
+
+/* ---------- 主区域 ---------- */
 #main{
   flex: 1;
   min-height: 0;
   display: flex;
-  background: #f6faff;
-}
-#left,#right{
-  flex: 1;
-  min-height: 0;
+  gap: 10px;
   padding: 10px;
+}
+#left, #right{
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
+#left{
+  gap: 8px;
+}
+
+/* ---------- 控制条 ---------- */
 #controller{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   user-select: none;
 }
+#presets{
+  appearance: none;
+  -webkit-appearance: none;
+  height: 28px;
+  min-width: 0;
+  padding: 0 26px 0 9px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%236b7280' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E")
+    right 9px center / 11px 11px no-repeat;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+#presets:hover{
+  border-color: #b9c0c9;
+}
+#presets:focus-visible{
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+/* 自定义复选框 */
+.check{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color .15s ease;
+}
+.check:hover{
+  color: var(--text);
+}
+.check input{
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.check input:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.check input:checked{
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.check input:checked::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E")
+              center / 10px 10px no-repeat;
+}
+
 #info{
-  color: #08f;
-  text-decoration: underline;
+  color: var(--accent);
+  text-decoration: none;
   cursor: pointer;
 }
-#inputbox-ctn{
-  flex: 1;
+#info:hover{
+  text-decoration: underline;
 }
-#inputbox,#stdout,#stderr{
+
+#runbtn{
+  margin-left: auto;
+  height: 28px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color .15s ease, transform .06s ease, box-shadow .15s ease;
+}
+#runbtn:hover{
+  background: var(--accent-hover);
+}
+#runbtn:active{
+  transform: translateY(1px);
+}
+#runbtn:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+/* ---------- 输入区 ---------- */
+#inputbox-ctn{
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+#inputbox{
   display: block;
   width: 100%;
-  border: 1px solid #ccc;
-  padding: 2px 5px;
-  overflow-y: auto;
-  background: white;
-  font-size: 15px;
-  font-family: Consolas;
+  height: 100%;
+  padding: 10px 12px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: inherit;
+  caret-color: var(--accent);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
   white-space: pre-wrap;
   tab-size: 4;
-  resize: none;
 }
-#inputbox{height: 100%;}
-#stdout{tab-size: 6;}
-#stdout{flex: 4;}
-#stderr{flex: 1;}
+#inputbox:disabled{
+  color: var(--text-muted);
+}
+#inputbox::selection{
+  background: var(--accent-ring);
+}
+
+/* ---------- 输出区 ---------- */
+#right{
+  gap: 0;
+}
+#stdout-title, #stderr-title{
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 4px;
+  padding-left: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--text-muted);
+}
+#stdout-title::before,
+#stderr-title::before{
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+#stderr-title::before{
+  background: #ef4444;
+}
+#stdout, #stderr{
+  width: 100%;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 4;
+}
+#stdout{
+  flex: 4;
+  margin: 0 0 8px;
+}
+#stderr{
+  flex: 1;
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+#stdout::-webkit-scrollbar,
+#stderr::-webkit-scrollbar{
+  width: 8px;
+  height: 8px;
+}
+#stdout::-webkit-scrollbar-track,
+#stderr::-webkit-scrollbar-track{
+  background: transparent;
+}
+#stdout::-webkit-scrollbar-thumb,
+#stderr::-webkit-scrollbar-thumb{
+  background: #d5d9e0;
+  border: 2px solid transparent;
+  border-radius: 99px;
+  background-clip: content-box;
+}
+#stdout::-webkit-scrollbar-thumb:hover,
+#stderr::-webkit-scrollbar-thumb:hover{
+  background: #c2c8d2;
+  background-clip: content-box;
+}
+
+/* ---------- 响应式 ---------- */
 @media screen and (max-width: 800px) {
   #main{
     flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+  }
+  #left, #right{
+    flex: 1 1 auto;
+  }
+  #inputbox-ctn{
+    min-height: 160px;
+  }
+  #stdout{
+    flex: 3;
+  }
+}
+@media screen and (max-width: 640px) {
+  #topbar{
+    height: 38px;
+    padding: 0 10px;
+  }
+  #main{
+    padding: 8px;
+  }
+  #controller{
+    padding: 5px 6px;
+    gap: 5px;
+  }
+  #presets{
+    flex: 1 1 auto;
+  }
+  #runbtn{
+    flex: 1 0 100%;
+    margin-left: 0;
   }
 }
 </style>
@@ -94,7 +370,7 @@ body{
 <body>
 <div id="topbar">
   <span>Jua Runtime Demo</span>
-  <a class="github" href="https://github.com/Chebys/jua"></a>
+  <a class="github" href="https://github.com/Chebys/jua" aria-label="GitHub"></a>
 </div>
 <div id="main">
   <div id="left">
@@ -114,7 +390,10 @@ body{
         <option>coding</option>
         <option>typedarray</option>
       </select>
-      启用语法高亮<input name="syntax-highlight" type="checkbox" />
+      <label class="check">
+        <input name="syntax-highlight" type="checkbox" />
+        <span>语法高亮</span>
+      </label>
       <!-- 严格解析模式<input name="strict-parse" type="checkbox" checked /> -->
       <!-- 调试模式<input name="debug" type="checkbox" /> -->
       <!-- <span id="info">说明</span> -->
@@ -131,5 +410,5 @@ body{
     <div id="stderr"></div>
   </div>
 </div>
-</body>
+<!-- Cloudflare Pages Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e52a05f0ee694553bc3805a4b2a96fff"}'></script><!-- Cloudflare Pages Analytics --></body>
 </html>
