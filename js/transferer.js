@@ -136,7 +136,7 @@ function fileContainer(filename){
 							alert(status)
 							return
 						}
-						if(!confirm('确定删除？'))return
+						if(!confirm(`确定删除：${filename} ？`))return
 						setStatus('deleting', filename)
 						delFile(filename)
 							.then(console.log)
